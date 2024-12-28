@@ -1,234 +1,231 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Family Tree</title>
-  <style>
-    canvas {
-      max-width: 100%;
-      height: 500px;
-      border: 1px solid #ddd;
-    }
-    .node {
-      display: inline-block;
-      padding: 10px;
-      font-weight: bold;
-      text-align: center;
-      line-height: 40px;
-      color: white;
-      font-size: 14px;
-    }
-    .male {
-      background-color: #007BFF; /* Square for males (Blue) */
-      border-radius: 0%; /* Square */
-    }
-    .female {
-      background-color: #FF63A5; /* Circle for females (Pink) */
-      border-radius: 50%; /* Circle */
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Tree using D3.js</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #familyTree {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node {
+            cursor: pointer;
+        }
+
+        .male {
+            fill: #007BFF;
+            width: 30px;
+            height: 30px;
+        }
+
+        .female {
+            fill: #FF63A5;
+            r: 15;
+        }
+
+        .link {
+            fill: none;
+            stroke: #6c757d;
+            stroke-width: 2px;
+        }
+
+        .label {
+            font-size: 14px;
+            text-anchor: middle;
+        }
+
+        .node text {
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+    </style>
 </head>
 <body>
 
-  <h1>Family Tree using Chart.js</h1>
-  <canvas id="familyTreeChart"></canvas>
+<svg id="familyTree">
+</svg>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    // Updated JSON data with changes and new names
+<script src="https://d3js.org/d3.v6.min.js"></script>
+<script>
+    // Family data with added grandparents
     const familyTreeData = {
-      "people": [
-        { "id": 1, "name": "Jon Bennett", "gender": "male" },
-        { "id": 2, "name": "Anita Bennett", "gender": "female" },
-        { "id": 3, "name": "Dave Bennett", "gender": "male" },
-        { "id": 4, "name": "Mnke Bennett", "gender": "male" },
-        { "id": 5, "name": "Ryan Bennett", "gender": "male" },
-        { "id": 6, "name": "Caroline Bennett", "gender": "female" },
-        { "id": 7, "name": "Rachael Bennett", "gender": "female" }
-      ],
-      "relationships": [
-        { "parentId": 1, "partnerId": 2 }, // Jon and Anita 
-        { "parentId": 1, "childrenIds": [3, 4, 5] }, // Dave, Mnke, and Ryan as children
-        { "parentId": 4, "childrenIds": [6] }, // Mnke has Caroline as a child
-        { "parentId": 4, "partnerId": 7 }, // Mnke and Rachael 
-      ]
+        "people": [
+		{ "id": 0, "name": "", "gender": "male" },
+		{ "id": 1, "name": "Gilbert Bennett", "gender": "male" },  
+		{ "id": 2, "name": "Caroline Bennett", "gender": "female" },   
+		{ "id": 3, "name": "John Reynolds", "gender": "male" },   
+		{ "id": 4, "name": "Lucille Reynolds", "gender": "female" },
+		{ "id": 5, "name": "Jon Bennett", "gender": "male" },
+		{ "id": 6, "name": "Anita Bennett", "gender": "female" },
+		{ "id": 7, "name": "Dave Bennett", "gender": "male" },
+		{ "id": 8, "name": "Mnke Bennett", "gender": "male" },
+		{ "id": 9, "name": "Ryan Bennett", "gender": "male" },
+		{ "id": 10, "name": "Rachael", "gender": "female" },
+		{ "id": 11, "name": "Caroline Bennett", "gender": "female" },
+        ],
+	"relationships": [
+		{ "parentId": 0, "childrenIds": [1, 2, 3, 4]},
+		{ "parentId": 1, "partnerId": 2, "childrenIds": [5]},
+		{ "parentId": 3, "partnerId": 4, "childrenIds": [6]},
+		{ "parentId": 5, "partnerId": 6, "childrenIds": [7, 8, 9]},
+		{ "parentId": 8, "partnerId": 10, "childrenIds": [] },
+		{ "parentId": 8, "partnerId": 10, "childrenIds": [11] }
+        ]
     };
 
-    // The nodes we will plot on the chart
-    let nodes = [];
-    let links = [];
-
-    // Helper function to find a person by ID
-    function findPersonById(id) {
-      return familyTreeData.people.find(person => person.id === id);
-    }
-
-    // Function to recursively add nodes and links for the chart
-    function processFamilyTree(person, x, y, level = 0, parentId = null) {
-      // Create a node for the person
-      const nodeId = nodes.length;
-      nodes.push({
-        x: x,
-        y: y,
-        label: person.name,
-        id: nodeId,
-        gender: person.gender
-      });
-
-      // If the person has a partner, add the partner node and link
-      const partnerRelationship = familyTreeData.relationships.find(rel => rel.parentId === person.id && rel.partnerId);
-      if (partnerRelationship) {
-        const partner = findPersonById(partnerRelationship.partnerId);
-        const partnerNodeId = nodes.length;
-        nodes.push({
-          x: x + 50,  // Partner is placed next to the main person
-          y: y,
-          label: partner.name,
-          id: partnerNodeId,
-          gender: partner.gender
+    // Convert the flat family data into a hierarchical format for D3
+    function buildHierarchy(data) {
+        const peopleMap = new Map();
+        data.people.forEach(person => {
+            peopleMap.set(person.id, { ...person, children: [] });
         });
 
-        // Link the person with their partner (horizontal line)
-        links.push({ from: nodeId, to: partnerNodeId });
-      }
+        data.relationships.forEach(rel => {
+            const parent = peopleMap.get(rel.parentId);
 
-      // If the person has children, recursively process them
-      const childrenRelationship = familyTreeData.relationships.find(rel => rel.parentId === person.id && rel.childrenIds);
-      if (childrenRelationship) {
-        const spacing = 150; // Space between siblings (increased for better visibility)
-        childrenRelationship.childrenIds.forEach((childId, index) => {
-          const child = findPersonById(childId);
-          const childX = x + (index - (childrenRelationship.childrenIds.length - 1) / 2) * spacing;
-          const childY = y + 100; // Increased vertical space between parents and children
-          links.push({ from: nodeId, to: nodes.length }); // Link parent to child (vertical line)
+            if (rel.partnerId) {
+                const partner = peopleMap.get(rel.partnerId);
+                parent.partner = partner;
+            }
 
-          processFamilyTree(child, childX, childY, level + 1, nodeId);
+            if (rel.childrenIds) {
+                rel.childrenIds.forEach(childId => {
+                    const child = peopleMap.get(childId);
+                    parent.children.push(child);
+                });
+            }
         });
-      }
+
+        const roots = [];
+        roots.push(peopleMap.get(0));
+        return roots;
     }
 
-    // Process the root (Jon Bennett)
-    const rootPerson = findPersonById(1); // Jon Bennett is the root
-    processFamilyTree(rootPerson, 0, 0);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const margin = { top: 20, right: 90, bottom: 30, left: 90 };
 
-    // Chart.js configuration
-    const config = {
-      type: 'scatter',
-      data: {
-        datasets: [{
-          label: 'Family Tree',
-          data: nodes.map(node => ({
-            x: node.x,
-            y: node.y,
-            label: node.label,
-          })),
-          pointBackgroundColor: nodes.map(node => node.gender === 'male' ? '#007BFF' : '#FF63A5'),
-          pointRadius: 20,
-          pointHoverRadius: 30,
-          pointStyle: nodes.map(node => node.gender === 'male' ? 'rect' : 'circle'),
-        }],
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            min: -300,
-            max: 300,
-            ticks: {
-              display: false
-            },
-            grid: {
-              display: false
-            }
-          },
-          y: {
-            min: -100,
-            max: 500, // Increased the max value to fit all nodes
-            ticks: {
-              display: false
-            },
-            grid: {
-              display: false
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            callbacks: {
-              label: function(tooltipItem) {
-                const node = nodes[tooltipItem.dataIndex];
-                return node.label;
-              }
-            }
-          }
-        },
-        interaction: {
-          mode: 'nearest',
-          intersect: false
-        },
-        elements: {
-          line: {
-            borderWidth: 2,
-            tension: 0.5,
-            backgroundColor: 'rgba(0, 123, 255, 0.2)',
-            borderColor: 'rgba(0, 123, 255, 1)'
-          }
-        }
-      }
-    };
+    // Create the tree layout (reduce distance between people)
+    const tree = d3.tree().size([height - margin.top - margin.bottom, width - margin.left - margin.right]);
 
-    // Create the chart
-    const ctx = document.getElementById('familyTreeChart').getContext('2d');
-    const familyTreeChart = new Chart(ctx, config);
-
-    // Draw the links (lines between family members)
-    function drawLinks() {
-      const ctx = familyTreeChart.ctx;
-      links.forEach(link => {
-        const fromNode = nodes[link.from];
-        const toNode = nodes[link.to];
-
-        // Draw vertical line between parent and child
-        ctx.beginPath();
-        ctx.moveTo(fromNode.x, fromNode.y + 20); // Offset to move below the node
-        ctx.lineTo(toNode.x, toNode.y - 20); // Offset to move above the child
-        ctx.strokeStyle = '#6c757d';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Draw horizontal line between partners
-        if (fromNode.x !== toNode.x) {
-          ctx.beginPath();
-          ctx.moveTo(fromNode.x + 20, fromNode.y); // Offset to avoid overlap with the node
-          ctx.lineTo(toNode.x - 20, toNode.y); // Offset to avoid overlap with the node
-          ctx.strokeStyle = '#6c757d';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
-      });
+    function handleZoom(e) {
+      d3.select('svg g')
+        .attr('transform', e.transform);
     }
 
-    // Draw labels below the nodes
-    function drawLabels() {
-      const ctx = familyTreeChart.ctx;
-      nodes.forEach(node => {
-        ctx.font = "14px Arial";
-        ctx.fillStyle = "#000";
-        ctx.textAlign = "center";
-        ctx.fillText(node.label, node.x, node.y + 30); // Labels below the node (offset y by 30)
-      });
-    }
+    // Create an SVG container
+    const svg = d3.select("#familyTree")
+                  .attr("width", width)
+                  .attr("height", height)
+                  .append("g")
+                  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    // Call drawLinks and drawLabels after the chart is drawn
-    familyTreeChart.options.animation.onComplete = function() {
-      drawLinks();
-      drawLabels();
-    };
-  </script>
+    d3.select("#familyTree").call(d3.zoom().on("zoom", handleZoom))
+
+    // Build the hierarchical data starting from Jon and Anita's family
+    const roots = buildHierarchy(familyTreeData);
+
+    // For each root, create a separate tree layout
+    roots.forEach((rootData) => {
+        const root = d3.hierarchy(rootData);
+        const nodes = tree(root).descendants();
+        const links = tree(root).links();
+
+        // Draw the links (lines between family members)
+        svg.selectAll(".link")
+           .data(links)
+           .enter().append("path")
+           .attr("class", "link")
+           .attr("d", d3.linkVertical()
+               .x(d => d.x)
+               .y(d => d.y + 30));  // Offset the links below the nodes to avoid overlapping
+
+        // Draw the nodes (shapes for each family member)
+        const node = svg.selectAll(".node")
+                        .data(nodes)
+                        .enter().append("g")
+                        .attr("class", "node")
+                        .attr("transform", d => "translate(" + d.x + "," + (d.y + 50) + ")"); // Offset the nodes slightly
+
+        // Add rectangles for males and circles for females
+        node.append("rect")
+            .filter(d => d.data.gender === "male")
+            .attr("class", "male")
+            .attr("x", -15)
+            .attr("y", -15);
+
+        node.append("circle")
+            .filter(d => d.data.gender === "female")
+            .attr("class", "female")
+            .attr("r", 15);
+
+        // Add labels below each node
+        node.append("text")
+            .attr("class", "label")
+            .attr("dy", 25) // Slightly offset text from the shape
+            .text(d => d.data.name);
+    });
+
+    // Update the size of the SVG when the window is resized
+    window.addEventListener('resize', function() {
+        const newWidth = window.innerWidth;
+        const newHeight = window.innerHeight;
+
+        svg.attr("width", newWidth).attr("height", newHeight);
+
+        // Adjust the tree layout to match the new size
+        tree.size([newHeight - margin.top - margin.bottom, newWidth - margin.left - margin.right]);
+        svg.selectAll(".link").remove();
+        svg.selectAll(".node").remove();
+
+        // Redraw the tree
+        roots.forEach((rootData) => {
+            const root = d3.hierarchy(rootData);
+            const nodes = tree(root).descendants();
+            const links = tree(root).links();
+
+            svg.selectAll(".link")
+               .data(links)
+               .enter().append("path")
+               .attr("class", "link")
+               .attr("d", d3.linkVertical()
+                   .x(d => d.x)
+                   .y(d => d.y + 30));  // Offset the links below the nodes to avoid overlapping
+
+            const node = svg.selectAll(".node")
+                            .data(nodes)
+                            .enter().append("g")
+                            .attr("class", "node")
+                            .attr("transform", d => "translate(" + d.x + "," + (d.y + 50) + ")"); // Offset the nodes slightly
+
+            node.append("rect")
+                .filter(d => d.data.gender === "male")
+                .attr("class", "male")
+                .attr("x", -15)
+                .attr("y", -15);
+
+            node.append("circle")
+                .filter(d => d.data.gender === "female")
+                .attr("class", "female")
+                .attr("r", 15);
+
+            node.append("text")
+                .attr("class", "label")
+                .attr("dy", 25) // Slightly offset text from the shape
+                .text(d => d.data.name);
+        });
+    });
+</script>
 </body>
 </html>
 
