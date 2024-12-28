@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Tree</title>
+  <style>
+    canvas {
+      max-width: 100%;
+      height: 500px;
+      border: 1px solid #ddd;
+    }
+    .node {
+      display: inline-block;
+      padding: 10px;
+      font-weight: bold;
+      text-align: center;
+      line-height: 40px;
+      color: white;
+      font-size: 14px;
+    }
+    .male {
+      background-color: #007BFF; /* Square for males (Blue) */
+      border-radius: 0%; /* Square */
+    }
+    .female {
+      background-color: #FF63A5; /* Circle for females (Pink) */
+      border-radius: 50%; /* Circle */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Family Tree using Chart.js</h1>
+  <canvas id="familyTreeChart"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Updated JSON data with changes and new names
+    const familyTreeData = {
+      "people": [
+        { "id": 1, "name": "Jon Bennett", "gender": "male" },
+        { "id": 2, "name": "Anita Bennett", "gender": "female" },
+        { "id": 3, "name": "Dave Bennett", "gender": "male" },
+        { "id": 4, "name": "Mnke Bennett", "gender": "male" },
+        { "id": 5, "name": "Ryan Bennett", "gender": "male" },
+        { "id": 6, "name": "Caroline Bennett", "gender": "female" },
+        { "id": 7, "name": "Rachael Bennett", "gender": "female" }
+      ],
+      "relationships": [
+        { "parentId": 1, "partnerId": 2 }, // Jon and Anita 
+        { "parentId": 1, "childrenIds": [3, 4, 5] }, // Dave, Mnke, and Ryan as children
+        { "parentId": 4, "childrenIds": [6] }, // Mnke has Caroline as a child
+        { "parentId": 4, "partnerId": 7 }, // Mnke and Rachael 
+      ]
+    };
+
+    // The nodes we will plot on the chart
+    let nodes = [];
+    let links = [];
+
+    // Helper function to find a person by ID
+    function findPersonById(id) {
+      return familyTreeData.people.find(person => person.id === id);
+    }
+
+    // Function to recursively add nodes and links for the chart
+    function processFamilyTree(person, x, y, level = 0, parentId = null) {
+      // Create a node for the person
+      const nodeId = nodes.length;
+      nodes.push({
+        x: x,
+        y: y,
+        label: person.name,
+        id: nodeId,
+        gender: person.gender
+      });
+
+      // If the person has a partner, add the partner node and link
+      const partnerRelationship = familyTreeData.relationships.find(rel => rel.parentId === person.id && rel.partnerId);
+      if (partnerRelationship) {
+        const partner = findPersonById(partnerRelationship.partnerId);
+        const partnerNodeId = nodes.length;
+        nodes.push({
+          x: x + 50,  // Partner is placed next to the main person
+          y: y,
+          label: partner.name,
+          id: partnerNodeId,
+          gender: partner.gender
+        });
+
+        // Link the person with their partner (horizontal line)
+        links.push({ from: nodeId, to: partnerNodeId });
+      }
+
+      // If the person has children, recursively process them
+      const childrenRelationship = familyTreeData.relationships.find(rel => rel.parentId === person.id && rel.childrenIds);
+      if (childrenRelationship) {
+        const spacing = 150; // Space between siblings (increased for better visibility)
+        childrenRelationship.childrenIds.forEach((childId, index) => {
+          const child = findPersonById(childId);
+          const childX = x + (index - (childrenRelationship.childrenIds.length - 1) / 2) * spacing;
+          const childY = y + 100; // Increased vertical space between parents and children
+          links.push({ from: nodeId, to: nodes.length }); // Link parent to child (vertical line)
+
+          processFamilyTree(child, childX, childY, level + 1, nodeId);
+        });
+      }
+    }
+
+    // Process the root (Jon Bennett)
+    const rootPerson = findPersonById(1); // Jon Bennett is the root
+    processFamilyTree(rootPerson, 0, 0);
+
+    // Chart.js configuration
+    const config = {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Family Tree',
+          data: nodes.map(node => ({
+            x: node.x,
+            y: node.y,
+            label: node.label,
+          })),
+          pointBackgroundColor: nodes.map(node => node.gender === 'male' ? '#007BFF' : '#FF63A5'),
+          pointRadius: 20,
+          pointHoverRadius: 30,
+          pointStyle: nodes.map(node => node.gender === 'male' ? 'rect' : 'circle'),
+        }],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            min: -300,
+            max: 300,
+            ticks: {
+              display: false
+            },
+            grid: {
+              display: false
+            }
+          },
+          y: {
+            min: -100,
+            max: 500, // Increased the max value to fit all nodes
+            ticks: {
+              display: false
+            },
+            grid: {
+              display: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(tooltipItem) {
+                const node = nodes[tooltipItem.dataIndex];
+                return node.label;
+              }
+            }
+          }
+        },
+        interaction: {
+          mode: 'nearest',
+          intersect: false
+        },
+        elements: {
+          line: {
+            borderWidth: 2,
+            tension: 0.5,
+            backgroundColor: 'rgba(0, 123, 255, 0.2)',
+            borderColor: 'rgba(0, 123, 255, 1)'
+          }
+        }
+      }
+    };
+
+    // Create the chart
+    const ctx = document.getElementById('familyTreeChart').getContext('2d');
+    const familyTreeChart = new Chart(ctx, config);
+
+    // Draw the links (lines between family members)
+    function drawLinks() {
+      const ctx = familyTreeChart.ctx;
+      links.forEach(link => {
+        const fromNode = nodes[link.from];
+        const toNode = nodes[link.to];
+
+        // Draw vertical line between parent and child
+        ctx.beginPath();
+        ctx.moveTo(fromNode.x, fromNode.y + 20); // Offset to move below the node
+        ctx.lineTo(toNode.x, toNode.y - 20); // Offset to move above the child
+        ctx.strokeStyle = '#6c757d';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw horizontal line between partners
+        if (fromNode.x !== toNode.x) {
+          ctx.beginPath();
+          ctx.moveTo(fromNode.x + 20, fromNode.y); // Offset to avoid overlap with the node
+          ctx.lineTo(toNode.x - 20, toNode.y); // Offset to avoid overlap with the node
+          ctx.strokeStyle = '#6c757d';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+    }
+
+    // Draw labels below the nodes
+    function drawLabels() {
+      const ctx = familyTreeChart.ctx;
+      nodes.forEach(node => {
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "center";
+        ctx.fillText(node.label, node.x, node.y + 30); // Labels below the node (offset y by 30)
+      });
+    }
+
+    // Call drawLinks and drawLabels after the chart is drawn
+    familyTreeChart.options.animation.onComplete = function() {
+      drawLinks();
+      drawLabels();
+    };
+  </script>
+</body>
+</html>
+
