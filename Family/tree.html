@@ -32,10 +32,22 @@
             r: 15;
         }
 
+        .neutral {
+            fill: #6c757d; /* Neutral color for root node */
+            r: 15;
+        }
+
         .link {
             fill: none;
             stroke: #6c757d;
             stroke-width: 2px;
+        }
+
+        .partner-link {
+            fill: none;
+            stroke: #000000; /* Changed from #FF5733 to black */
+            stroke-width: 2px;
+            stroke-dasharray: 5, 5; /* Optional: dashed line */
         }
 
         .label {
@@ -60,30 +72,29 @@
     // Family data with added grandparents
     const familyTreeData = {
         "people": [
-		{ "id": 0, "name": "", "gender": "male" },
-		{ "id": 1, "name": "Gilbert Bennett", "gender": "male" },  
-		{ "id": 2, "name": "Caroline Bennett", "gender": "female" },   
-		{ "id": 3, "name": "John Reynolds", "gender": "male" },   
-		{ "id": 4, "name": "Lucille Reynolds", "gender": "female" },
-		{ "id": 5, "name": "Jon Bennett", "gender": "male" },
-		{ "id": 6, "name": "Anita Bennett", "gender": "female" },
-		{ "id": 7, "name": "Dave Bennett", "gender": "male" },
-		{ "id": 8, "name": "Mnke Bennett", "gender": "male" },
-		{ "id": 9, "name": "Ryan Bennett", "gender": "male" },
-		{ "id": 10, "name": "Rachael", "gender": "female" },
-		{ "id": 11, "name": "Caroline Bennett", "gender": "female" },
+            { "id": 0, "name": "Root", "gender": "neutral" },
+            { "id": 1, "name": "Gilbert Bennett", "gender": "male" },  
+            { "id": 2, "name": "Carolyn Bennett", "gender": "female" },   
+            { "id": 3, "name": "John Reynolds", "gender": "male" },   
+            { "id": 4, "name": "Lucille Reynolds", "gender": "female" },
+            { "id": 5, "name": "Jon Bennett", "gender": "male" },
+            { "id": 6, "name": "Anita Bennett", "gender": "female" },
+            { "id": 7, "name": "Dave Bennett", "gender": "male" },
+            { "id": 8, "name": "Mnke Bennett", "gender": "male" },
+            { "id": 9, "name": "Ryan Bennett", "gender": "male" },
+            { "id": 10, "name": "Rachael", "gender": "female" },
+            { "id": 11, "name": "Caroline Bennett", "gender": "female" },
         ],
-	"relationships": [
-		{ "parentId": 0, "childrenIds": [1, 2, 3, 4]},
-		{ "parentId": 1, "partnerId": 2, "childrenIds": [5]},
-		{ "parentId": 3, "partnerId": 4, "childrenIds": [6]},
-		{ "parentId": 5, "partnerId": 6, "childrenIds": [7, 8, 9]},
-		{ "parentId": 8, "partnerId": 10, "childrenIds": [] },
-		{ "parentId": 8, "partnerId": 10, "childrenIds": [11] }
+        "relationships": [
+            { "parentId": 0, "childrenIds": [1, 2, 3, 4] },
+            { "parentId": 1, "partnerId": 2, "childrenIds": [5] },
+            { "parentId": 3, "partnerId": 4, "childrenIds": [6] },
+            { "parentId": 5, "partnerId": 6, "childrenIds": [7, 8, 9] },
+            { "parentId": 8, "partnerId": 10, "childrenIds": [11] }
         ]
     };
 
-    // Convert the flat family data into a hierarchical format for D3
+    // Build hierarchical data structure from flat family data
     function buildHierarchy(data) {
         const peopleMap = new Map();
         data.people.forEach(person => {
@@ -92,12 +103,10 @@
 
         data.relationships.forEach(rel => {
             const parent = peopleMap.get(rel.parentId);
-
             if (rel.partnerId) {
                 const partner = peopleMap.get(rel.partnerId);
                 parent.partner = partner;
             }
-
             if (rel.childrenIds) {
                 rel.childrenIds.forEach(childId => {
                     const child = peopleMap.get(childId);
@@ -106,124 +115,110 @@
             }
         });
 
-        const roots = [];
-        roots.push(peopleMap.get(0));
-        return roots;
+        return [peopleMap.get(0)];  // Root node remains in hierarchy but will be hidden
     }
 
     const width = window.innerWidth;
     const height = window.innerHeight;
     const margin = { top: 20, right: 90, bottom: 30, left: 90 };
 
-    // Create the tree layout (reduce distance between people)
-    const tree = d3.tree().size([height - margin.top - margin.bottom, width - margin.left - margin.right]);
+    // Adjust tree layout size to reduce vertical spacing between nodes
+    //const tree = d3.tree().size([height - margin.top - margin.bottom, width - margin.left - margin.right]);
+    const tree = d3.tree().size([height*0.8, width*0.8]);
 
     function handleZoom(e) {
-      d3.select('svg g')
-        .attr('transform', e.transform);
+        d3.select('svg g')
+            .attr('transform', e.transform);
     }
 
-    // Create an SVG container
     const svg = d3.select("#familyTree")
                   .attr("width", width)
                   .attr("height", height)
                   .append("g")
                   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    d3.select("#familyTree").call(d3.zoom().on("zoom", handleZoom))
+    d3.select("#familyTree").call(d3.zoom().on("zoom", handleZoom));
 
-    // Build the hierarchical data starting from Jon and Anita's family
     const roots = buildHierarchy(familyTreeData);
 
-    // For each root, create a separate tree layout
-    roots.forEach((rootData) => {
-        const root = d3.hierarchy(rootData);
-        const nodes = tree(root).descendants();
-        const links = tree(root).links();
-
-        // Draw the links (lines between family members)
-        svg.selectAll(".link")
-           .data(links)
-           .enter().append("path")
-           .attr("class", "link")
-           .attr("d", d3.linkVertical()
-               .x(d => d.x)
-               .y(d => d.y + 30));  // Offset the links below the nodes to avoid overlapping
-
-        // Draw the nodes (shapes for each family member)
-        const node = svg.selectAll(".node")
-                        .data(nodes)
-                        .enter().append("g")
-                        .attr("class", "node")
-                        .attr("transform", d => "translate(" + d.x + "," + (d.y + 50) + ")"); // Offset the nodes slightly
-
-        // Add rectangles for males and circles for females
-        node.append("rect")
-            .filter(d => d.data.gender === "male")
-            .attr("class", "male")
-            .attr("x", -15)
-            .attr("y", -15);
-
-        node.append("circle")
-            .filter(d => d.data.gender === "female")
-            .attr("class", "female")
-            .attr("r", 15);
-
-        // Add labels below each node
-        node.append("text")
-            .attr("class", "label")
-            .attr("dy", 25) // Slightly offset text from the shape
-            .text(d => d.data.name);
-    });
-
-    // Update the size of the SVG when the window is resized
-    window.addEventListener('resize', function() {
-        const newWidth = window.innerWidth;
-        const newHeight = window.innerHeight;
-
-        svg.attr("width", newWidth).attr("height", newHeight);
-
-        // Adjust the tree layout to match the new size
-        tree.size([newHeight - margin.top - margin.bottom, newWidth - margin.left - margin.right]);
+    function drawTree() {
         svg.selectAll(".link").remove();
         svg.selectAll(".node").remove();
+        svg.selectAll(".partner-link").remove();
 
-        // Redraw the tree
-        roots.forEach((rootData) => {
+        roots.forEach(rootData => {
             const root = d3.hierarchy(rootData);
             const nodes = tree(root).descendants();
             const links = tree(root).links();
 
+            // Draw links (connections between family members)
             svg.selectAll(".link")
                .data(links)
                .enter().append("path")
                .attr("class", "link")
                .attr("d", d3.linkVertical()
                    .x(d => d.x)
-                   .y(d => d.y + 30));  // Offset the links below the nodes to avoid overlapping
+                   .y(d => d.y));
 
+            // Draw the partner links
+            nodes.forEach(node => {
+                if (node.data.partner) {
+                    const partner = node.data.partner;
+                    const partnerNode = nodes.find(n => n.data.id === partner.id);
+                    if (partnerNode) {
+                        svg.append("path")
+                           .attr("class", "partner-link")
+                           .attr("d", `M${node.x},${node.y + 20} C${(node.x + partnerNode.x) / 2},${node.y + 20} ${(node.x + partnerNode.x) / 2},${partnerNode.y + 20} ${partnerNode.x},${partnerNode.y + 20}`);
+                    }
+                }
+            });
+
+            // Draw nodes (shapes for each family member)
             const node = svg.selectAll(".node")
                             .data(nodes)
                             .enter().append("g")
                             .attr("class", "node")
-                            .attr("transform", d => "translate(" + d.x + "," + (d.y + 50) + ")"); // Offset the nodes slightly
+                            .attr("transform", d => "translate(" + d.x + "," + (d.y + 50) + ")");
 
+            // Append neutral circle for root node
+            node.append("circle")
+                .filter(d => d.data.gender === "neutral")
+                .attr("class", "neutral")
+                .attr("r", 15);
+
+            // Append rectangle for male members
             node.append("rect")
                 .filter(d => d.data.gender === "male")
                 .attr("class", "male")
                 .attr("x", -15)
                 .attr("y", -15);
 
+            // Append circle for female members
             node.append("circle")
                 .filter(d => d.data.gender === "female")
                 .attr("class", "female")
                 .attr("r", 15);
 
+            // Add labels below the nodes
             node.append("text")
                 .attr("class", "label")
-                .attr("dy", 25) // Slightly offset text from the shape
+                .attr("dy", 25)
                 .text(d => d.data.name);
         });
+    }
+
+    drawTree();
+
+    // Update the tree on window resize
+    window.addEventListener('resize', function() {
+        const newWidth = window.innerWidth;
+        const newHeight = window.innerHeight;
+
+        svg.attr("width", newWidth).attr("height", newHeight);
+
+        tree.size([newHeight - margin.top - margin.bottom, newWidth - margin.left - margin.right]);
+
+        drawTree();
     });
 </script>
 </body>
