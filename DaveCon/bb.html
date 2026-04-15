@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAVECON Black Badge</title>
+
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: monospace;
+    }
+
+    img {
+        max-width: 90vw;
+        max-height: 90vh;
+        position: relative;
+        z-index: 2;
+        animation: glitch 2s infinite;
+    }
+
+    @keyframes glitch {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 1px); }
+        40% { transform: translate(2px, -1px); }
+        60% { transform: translate(-1px, 2px); }
+        80% { transform: translate(1px, -2px); }
+        100% { transform: translate(0); }
+    }
+
+    .dna {
+        position: absolute;
+        font-size: 14px;
+        line-height: 14px;
+        opacity: 0;
+        pointer-events: none;
+        white-space: pre;
+        animation: fall linear forwards;
+    }
+
+    @keyframes fall {
+        0% {
+            opacity: 0;
+            transform: translateY(-60px);
+        }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% {
+            opacity: 0;
+            transform: translateY(100vh);
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<img src="BLACK_BADGE.png" alt="DAVECON Black Badge">
+
+<script>
+const chars = ['A', 'T', 'C', 'G'];
+
+function randomBase() {
+    return chars[Math.floor(Math.random() * chars.length)];
+}
+
+function randomDNAColumn(length) {
+    let str = '';
+    for (let i = 0; i < length; i++) {
+        str += randomBase() + '\n';
+    }
+    return str;
+}
+
+function makeDaveColumn() {
+    const pattern = ['D','A','V','E'];
+    let str = '';
+    for (let i = 0; i < 20; i++) {
+        str += pattern[i % 4] + '\n';
+    }
+    return str;
+}
+
+function makeLegitColumn() {
+    const word = "TOTALLYLEGIT";
+    let arr = [];
+    for (let i = 0; i < word.length; i++) {
+        arr.push(word[i]);
+    }
+    return arr.join('\n');
+}
+
+function spawnDNA() {
+    const el = document.createElement('div');
+    el.className = 'dna';
+
+    const roll = Math.random();
+
+    let content;
+    let color = '#0f0';
+
+    if (roll < 0.03) {
+        // Legendary gold strand
+        content = randomDNAColumn(20);
+        color = '#FFD700';
+    } else if (roll < 0.08) {
+        // DAVE strand
+        content = makeDaveColumn();
+        color = '#00ffcc';
+    } else if (roll < 0.12) {
+        // Will morph into TOTALLY LEGIT
+        content = randomDNAColumn(14);
+        setTimeout(() => {
+            el.textContent = makeLegitColumn();
+        }, 1000 + Math.random() * 1000);
+        color = '#ff4444';
+    } else {
+        content = randomDNAColumn(10 + Math.floor(Math.random() * 20));
+    }
+
+    el.textContent = content;
+    el.style.color = color;
+
+    el.style.left = Math.random() * window.innerWidth + 'px';
+    el.style.top = '-100px';
+
+    const duration = 3 + Math.random() * 4;
+    el.style.animationDuration = duration + 's';
+
+    document.body.appendChild(el);
+
+    setTimeout(() => {
+        el.remove();
+    }, duration * 1000);
+}
+
+setInterval(spawnDNA, 180);
+</script>
+
+</body>
+</html>
