@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dave's Travelogues</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav>
+      <a class="brand" href="#">Dave's Travelogues</a>
+      <a href="#travels">Travels</a>
+      <a href="#map">Map</a>
+      <a href="#about">About</a>
+    </nav>
+    <section>
+      <p class="eyebrow">public google docs archive</p>
+      <h1>A grand Daventure.</h1>
+    </section>
+  </header>
+
+  <main>
+    <section class="controls" aria-label="Travelogue filters">
+      <input id="search" type="search" placeholder="Search destination, title, tag, or year..." />
+      <select id="tagFilter"><option value="all">All tags</option></select>
+      <select id="yearFilter"><option value="all">All years</option></select>
+    </section>
+
+    <section id="travels" class="grid" aria-live="polite"></section>
+
+    <section id="map" class="map-section" aria-label="Travel map">
+      <div class="section-heading">
+        <p class="eyebrow">map</p>
+        <h2>Stops across the archive</h2>
+      </div>
+      <div id="travelMap" class="map-panel"></div>
+    </section>
+  </main>
+
+  <footer id="about">
+  </footer>
+
+  <script src="travelogues.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

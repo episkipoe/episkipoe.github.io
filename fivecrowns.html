@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Five Crowns Score Tracker</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d2430;
+      --muted: #667085;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --soft: #f5f7fb;
+      --accent: #0f766e;
+      --accent-soft: #d8f3ee;
+      --danger: #b42318;
+      --danger-soft: #fee4e2;
+      --gold: #996d13;
+      --gold-soft: #fff2cc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--soft);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1100px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 16px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid rgba(15, 118, 110, 0.28);
+      outline-offset: 2px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 12px 32px rgba(31, 41, 55, 0.08);
+    }
+
+    #setupPanel {
+      padding: 18px;
+    }
+
+    .setup-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .setup-top h2 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .player-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+    }
+
+    input[type="number"] {
+      text-align: center;
+    }
+
+    .setup-actions,
+    .game-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    #gamePanel {
+      display: none;
+    }
+
+    body.game-active #setupPanel {
+      display: none;
+    }
+
+    body.game-active #gamePanel {
+      display: block;
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line);
+    }
+
+    .status-card {
+      padding: 16px;
+      border-right: 1px solid var(--line);
+    }
+
+    .status-card:last-child {
+      border-right: 0;
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .status-value {
+      margin-top: 4px;
+      font-size: clamp(1.35rem, 3vw, 2.15rem);
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .game-actions {
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .table-wrapper {
+      max-height: 70vh;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 10px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: #eef3f8;
+      font-size: 0.88rem;
+    }
+
+    tbody tr.current-round td {
+      background: var(--accent-soft);
+    }
+
+    tbody tr.complete-round td:first-child {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    tbody td:first-child,
+    thead th:first-child,
+    tfoot td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: #fff;
+      font-weight: 800;
+    }
+
+    thead th:first-child {
+      z-index: 4;
+      background: #eef3f8;
+    }
+
+    tfoot td {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      background: #fff;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .round-label {
+      display: grid;
+      gap: 2px;
+      min-width: 88px;
+    }
+
+    .round-card {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .dealer-pill,
+    .wild-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      min-height: 30px;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-weight: 800;
+    }
+
+    .dealer-pill {
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .wild-pill {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .score-input {
+      max-width: 82px;
+      margin: 0 auto;
+    }
+
+    .leader {
+      background: var(--accent-soft) !important;
+      color: #0b5f59;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100vw - 16px, 1100px);
+        padding: 14px 0;
+      }
+
+      header {
+        display: block;
+      }
+
+      header .game-actions {
+        margin-top: 14px;
+      }
+
+      .status-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .status-card {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .status-card:last-child {
+        border-bottom: 0;
+      }
+
+      th,
+      td {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Five Crowns</h1>
+        <p class="subtitle">Score the eleven hands from 3 cards through kings.</p>
+      </div>
+    </header>
+
+    <section id="setupPanel" class="panel" aria-labelledby="setupTitle">
+      <div class="setup-top">
+        <h2 id="setupTitle">Players</h2>
+        <button class="secondary" type="button" onclick="addPlayer()">Add Player</button>
+      </div>
+      <div id="playerFields" class="player-grid"></div>
+      <div class="setup-actions">
+        <button type="button" onclick="startNewGame()">New Game</button>
+        <button class="secondary" type="button" onclick="removePlayer()">Remove Player</button>
+      </div>
+    </section>
+
+    <section id="gamePanel" class="panel" aria-label="Five Crowns score table">
+      <div class="status-bar">
+        <div class="status-card">
+          <div class="eyebrow">Current Hand</div>
+          <div id="currentHand" class="status-value">3 cards</div>
+        </div>
+        <div class="status-card">
+          <div class="eyebrow">Wild</div>
+          <div id="currentWild" class="status-value">3s</div>
+        </div>
+        <div class="status-card">
+          <div class="eyebrow">Dealer</div>
+          <div id="currentDealer" class="status-value">Player 1</div>
+        </div>
+      </div>
+
+      <div class="game-actions">
+        <div class="setup-actions">
+          <button type="button" onclick="jumpToCurrentRound()">Current Round</button>
+          <button class="secondary" type="button" onclick="showSetup()">Edit Players</button>
+        </div>
+        <button class="danger" type="button" onclick="clearGame()">Clear Game</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="scoreTable"></table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const rounds = [
+      { cards: 3, wild: '3s' },
+      { cards: 4, wild: '4s' },
+      { cards: 5, wild: '5s' },
+      { cards: 6, wild: '6s' },
+      { cards: 7, wild: '7s' },
+      { cards: 8, wild: '8s' },
+      { cards: 9, wild: '9s' },
+      { cards: 10, wild: '10s' },
+      { cards: 11, wild: 'Jacks' },
+      { cards: 12, wild: 'Queens' },
+      { cards: 13, wild: 'Kings' }
+    ];
+
+    const storageKey = 'fiveCrownsScoreTracker';
+    let players = ['Player 1', 'Player 2', 'Player 3'];
+    let scores = {};
+
+    function renderPlayerFields() {
+      const fields = document.getElementById('playerFields');
+      fields.innerHTML = players.map((name, index) => `
+        <label>
+          Player ${index + 1}
+          <input id="player_${index}" type="text" value="${escapeHtml(name)}" placeholder="Player ${index + 1}">
+        </label>
+      `).join('');
+    }
+
+    function addPlayer() {
+      players = readPlayerNames();
+      players.push(`Player ${players.length + 1}`);
+      renderPlayerFields();
+      document.getElementById(`player_${players.length - 1}`).focus();
+    }
+
+    function removePlayer() {
+      players = readPlayerNames();
+      if (players.length <= 2) return;
+      players.pop();
+      renderPlayerFields();
+    }
+
+    function readPlayerNames() {
+      return Array.from(document.querySelectorAll('#playerFields input'))
+        .map((input, index) => input.value.trim() || `Player ${index + 1}`);
+    }
+
+    function startNewGame() {
+      players = readPlayerNames();
+      scores = {};
+      document.body.classList.add('game-active');
+      renderTable();
+      saveGame();
+      jumpToCurrentRound();
+    }
+
+    function showSetup() {
+      players = readPlayerNamesFromGame();
+      renderPlayerFields();
+      document.body.classList.remove('game-active');
+      saveGame();
+    }
+
+    function readPlayerNamesFromGame() {
+      return players.length ? players : readPlayerNames();
+    }
+
+    function clearGame() {
+      localStorage.removeItem(storageKey);
+      players = ['Player 1', 'Player 2', 'Player 3'];
+      scores = {};
+      document.body.classList.remove('game-active');
+      renderPlayerFields();
+    }
+
+    function renderTable() {
+      const table = document.getElementById('scoreTable');
+      const currentRound = getCurrentRoundIndex();
+      let html = '<thead><tr><th>Hand</th><th>Wild</th><th>Dealer</th>';
+
+      players.forEach(player => {
+        html += `<th>${escapeHtml(player)}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      rounds.forEach((round, roundIndex) => {
+        const rowClass = roundIndex === currentRound ? 'current-round' : isRoundComplete(roundIndex) ? 'complete-round' : '';
+        html += `<tr id="round_${roundIndex}" class="${rowClass}">`;
+        html += `<td><span class="round-label">${round.cards} cards<span class="round-card">Round ${roundIndex + 1}</span></span></td>`;
+        html += `<td><span class="wild-pill">${round.wild}</span></td>`;
+        html += `<td><span class="dealer-pill">${escapeHtml(getDealer(roundIndex))}</span></td>`;
+
+        players.forEach((player, playerIndex) => {
+          const key = scoreKey(roundIndex, playerIndex);
+          const value = scores[key] ?? '';
+          html += `<td><input class="score-input" id="${key}" type="number" min="0" inputmode="numeric" value="${value}" onchange="updateScore(${roundIndex}, ${playerIndex}, this.value)"></td>`;
+        });
+
+        html += '</tr>';
+      });
+
+      html += '</tbody><tfoot><tr><td>Total</td><td></td><td></td>';
+      getTotals().forEach((total, index) => {
+        html += `<td id="total_${index}">${total}</td>`;
+      });
+      html += '</tr></tfoot>';
+      table.innerHTML = html;
+
+      updateStatusCards(currentRound);
+      highlightLeaders();
+    }
+
+    function updateScore(roundIndex, playerIndex, rawValue) {
+      const key = scoreKey(roundIndex, playerIndex);
+      const value = rawValue === '' ? '' : Number(rawValue);
+
+      if (value === '' || Number.isNaN(value)) {
+        delete scores[key];
+      } else {
+        scores[key] = Math.max(0, value);
+      }
+
+      renderTable();
+      saveGame();
+    }
+
+    function getTotals() {
+      return players.map((player, playerIndex) => {
+        return rounds.reduce((total, round, roundIndex) => {
+          return total + (scores[scoreKey(roundIndex, playerIndex)] || 0);
+        }, 0);
+      });
+    }
+
+    function highlightLeaders() {
+      const totals = getTotals();
+      const best = Math.min(...totals);
+      totals.forEach((total, index) => {
+        const cell = document.getElementById(`total_${index}`);
+        if (cell && total === best) cell.classList.add('leader');
+      });
+    }
+
+    function getCurrentRoundIndex() {
+      const firstIncomplete = rounds.findIndex((round, roundIndex) => !isRoundComplete(roundIndex));
+      return firstIncomplete === -1 ? rounds.length - 1 : firstIncomplete;
+    }
+
+    function isRoundComplete(roundIndex) {
+      return players.every((player, playerIndex) => scores[scoreKey(roundIndex, playerIndex)] !== undefined);
+    }
+
+    function updateStatusCards(roundIndex) {
+      const round = rounds[roundIndex];
+      const complete = rounds.every((item, index) => isRoundComplete(index));
+      document.getElementById('currentHand').textContent = complete ? 'Game over' : `${round.cards} cards`;
+      document.getElementById('currentWild').textContent = complete ? 'Done' : round.wild;
+      document.getElementById('currentDealer').textContent = complete ? getWinnerText() : getDealer(roundIndex);
+    }
+
+    function getWinnerText() {
+      const totals = getTotals();
+      const best = Math.min(...totals);
+      return players.filter((player, index) => totals[index] === best).join(', ');
+    }
+
+    function getDealer(roundIndex) {
+      return players[roundIndex % players.length];
+    }
+
+    function scoreKey(roundIndex, playerIndex) {
+      return `score_${roundIndex}_${playerIndex}`;
+    }
+
+    function jumpToCurrentRound() {
+      const row = document.getElementById(`round_${getCurrentRoundIndex()}`);
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+
+    function saveGame() {
+      localStorage.setItem(storageKey, JSON.stringify({
+        players,
+        scores,
+        active: document.body.classList.contains('game-active')
+      }));
+    }
+
+    function loadGame() {
+      const data = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (data) {
+        players = Array.isArray(data.players) && data.players.length >= 2 ? data.players : players;
+        scores = data.scores || {};
+        document.body.classList.toggle('game-active', !!data.active);
+      }
+
+      renderPlayerFields();
+      if (document.body.classList.contains('game-active')) renderTable();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    window.addEventListener('load', loadGame);
+  </script>
+</body>
+</html>
