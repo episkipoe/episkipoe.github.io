@@ -166,7 +166,7 @@
     }
 
     .status-card {
-      padding: 16px;
+      padding: 14px;
       border-right: 1px solid var(--line);
     }
 
@@ -203,7 +203,7 @@
 
     table {
       width: 100%;
-      min-width: 760px;
+      min-width: 620px;
       border-collapse: collapse;
     }
 
@@ -211,7 +211,7 @@
     td {
       border-bottom: 1px solid var(--line);
       border-right: 1px solid var(--line);
-      padding: 10px;
+      padding: 8px;
       text-align: center;
       vertical-align: middle;
     }
@@ -265,7 +265,7 @@
     .round-label {
       display: grid;
       gap: 2px;
-      min-width: 88px;
+      min-width: 72px;
     }
 
     .round-card {
@@ -279,10 +279,10 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 48px;
-      min-height: 30px;
-      border-radius: 999px;
-      padding: 4px 9px;
+      min-width: 42px;
+      min-height: 28px;
+      border-radius: 8px;
+      padding: 3px 7px;
       font-weight: 800;
     }
 
@@ -297,7 +297,7 @@
     }
 
     .score-input {
-      max-width: 82px;
+      max-width: 72px;
       margin: 0 auto;
     }
 
@@ -312,8 +312,38 @@
 
     @media (max-width: 720px) {
       main {
-        width: min(100vw - 16px, 1100px);
-        padding: 14px 0;
+        width: min(100vw - 8px, 1100px);
+        padding: 8px 0;
+      }
+
+      body.game-active {
+        height: 100svh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+
+      body.game-active main {
+        display: flex;
+        height: 100svh;
+        height: 100dvh;
+        padding: 4px 0;
+      }
+
+      body.game-active header {
+        display: none;
+      }
+
+      body.game-active #gamePanel {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+      }
+
+      body.game-active .table-wrapper {
+        flex: 1;
+        min-height: 0;
+        max-height: none;
       }
 
       header {
@@ -325,21 +355,80 @@
       }
 
       .status-bar {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .status-card {
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
+        padding: 10px 8px;
+        border-right: 1px solid var(--line);
+        border-bottom: 0;
+        min-width: 0;
       }
 
       .status-card:last-child {
-        border-bottom: 0;
+        border-right: 0;
+      }
+
+      .eyebrow {
+        font-size: 0.66rem;
+      }
+
+      .status-value {
+        font-size: 1.05rem;
+        overflow-wrap: anywhere;
+      }
+
+      .game-actions {
+        padding: 8px;
+      }
+
+      .setup-actions,
+      .game-actions {
+        gap: 6px;
+      }
+
+      button {
+        min-height: 36px;
+        padding: 0 10px;
+        font-size: 0.88rem;
       }
 
       th,
       td {
-        padding: 8px;
+        padding: 5px;
+        font-size: 0.82rem;
+      }
+
+      table {
+        min-width: 470px;
+      }
+
+      input {
+        min-height: 36px;
+        padding: 6px 7px;
+        font-size: 0.9rem;
+      }
+
+      .score-input {
+        max-width: 54px;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+
+      .round-label {
+        min-width: 58px;
+      }
+
+      .round-card {
+        font-size: 0.68rem;
+      }
+
+      .dealer-pill,
+      .wild-pill {
+        min-width: 34px;
+        min-height: 24px;
+        padding: 2px 5px;
+        font-size: 0.76rem;
       }
     }
   </style>
@@ -348,8 +437,6 @@
   <main>
     <header>
       <div>
-        <h1>Five Crowns</h1>
-        <p class="subtitle">Score the eleven hands from 3 cards through kings.</p>
       </div>
     </header>
 
@@ -474,7 +561,7 @@
     function renderTable() {
       const table = document.getElementById('scoreTable');
       const currentRound = getCurrentRoundIndex();
-      let html = '<thead><tr><th>Hand</th><th>Wild</th><th>Dealer</th>';
+      let html = '<thead><tr><th>Hand</th><th>Dealer</th>';
 
       players.forEach(player => {
         html += `<th>${escapeHtml(player)}</th>`;
@@ -484,8 +571,7 @@
       rounds.forEach((round, roundIndex) => {
         const rowClass = roundIndex === currentRound ? 'current-round' : isRoundComplete(roundIndex) ? 'complete-round' : '';
         html += `<tr id="round_${roundIndex}" class="${rowClass}">`;
-        html += `<td><span class="round-label">${round.cards} cards<span class="round-card">Round ${roundIndex + 1}</span></span></td>`;
-        html += `<td><span class="wild-pill">${round.wild}</span></td>`;
+        html += `<td><span class="round-label">${round.cards} cards<span class="round-card">${round.wild} wild</span></span></td>`;
         html += `<td><span class="dealer-pill">${escapeHtml(getDealer(roundIndex))}</span></td>`;
 
         players.forEach((player, playerIndex) => {
@@ -497,7 +583,7 @@
         html += '</tr>';
       });
 
-      html += '</tbody><tfoot><tr><td>Total</td><td></td><td></td>';
+      html += '</tbody><tfoot><tr><td>Total</td><td></td>';
       getTotals().forEach((total, index) => {
         html += `<td id="total_${index}">${total}</td>`;
       });

@@ -187,7 +187,7 @@
     }
 
     .status-card {
-      padding: 16px;
+      padding: 14px;
       border-right: 1px solid var(--line);
     }
 
@@ -224,7 +224,7 @@
 
     table {
       width: 100%;
-      min-width: 740px;
+      min-width: 560px;
       border-collapse: collapse;
     }
 
@@ -232,7 +232,7 @@
     td {
       border-bottom: 1px solid var(--line);
       border-right: 1px solid var(--line);
-      padding: 10px;
+      padding: 8px;
       text-align: center;
       vertical-align: middle;
     }
@@ -293,10 +293,10 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 48px;
-      min-height: 30px;
-      border-radius: 999px;
-      padding: 4px 9px;
+      min-width: 42px;
+      min-height: 28px;
+      border-radius: 8px;
+      padding: 3px 7px;
       font-weight: 800;
     }
 
@@ -306,7 +306,7 @@
     }
 
     .score-input {
-      max-width: 82px;
+      max-width: 72px;
       margin: 0 auto;
     }
 
@@ -391,8 +391,8 @@
 
     @media (max-width: 720px) {
       main {
-        width: min(100vw - 16px, 1120px);
-        padding: 14px 0;
+        width: min(100vw - 8px, 1120px);
+        padding: 8px 0;
       }
 
       header {
@@ -404,21 +404,81 @@
       }
 
       .status-bar {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .status-card {
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
+        padding: 10px 8px;
+        border-right: 1px solid var(--line);
+        border-bottom: 0;
+        min-width: 0;
       }
 
       .status-card:last-child {
-        border-bottom: 0;
+        border-right: 0;
+      }
+
+      .eyebrow {
+        font-size: 0.66rem;
+      }
+
+      .status-value {
+        font-size: 1.05rem;
+        overflow-wrap: anywhere;
+      }
+
+      .game-actions {
+        padding: 8px;
+      }
+
+      .setup-actions,
+      .game-actions,
+      .calculator-actions {
+        gap: 6px;
+      }
+
+      button {
+        min-height: 36px;
+        padding: 0 10px;
+        font-size: 0.88rem;
       }
 
       th,
       td {
-        padding: 8px;
+        padding: 5px;
+        font-size: 0.82rem;
+      }
+
+      table {
+        min-width: 390px;
+      }
+
+      input,
+      select {
+        min-height: 36px;
+        padding: 6px 7px;
+        font-size: 0.9rem;
+      }
+
+      .score-input {
+        max-width: 54px;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+
+      .dealer-pill {
+        min-width: 34px;
+        min-height: 24px;
+        padding: 2px 5px;
+        font-size: 0.76rem;
+      }
+
+      .calculator-grid {
+        gap: 6px;
+      }
+
+      .card-select {
+        min-height: 46px;
       }
     }
   </style>
@@ -650,10 +710,6 @@
       getTotals().forEach((total, index) => {
         html += `<td id="total_${index}">${total}</td>`;
       });
-      html += '</tr><tr><td>Average</td>';
-      getAverages().forEach(average => {
-        html += `<td>${average}</td>`;
-      });
       html += '</tr></tfoot>';
       table.innerHTML = html;
 
@@ -688,18 +744,6 @@
           total += scores[scoreKey(holeIndex, playerIndex)] || 0;
         }
         return total;
-      });
-    }
-
-    function getAverages() {
-      return players.map((player, playerIndex) => {
-        const entered = [];
-        for (let holeIndex = 0; holeIndex < holeCount; holeIndex++) {
-          const value = scores[scoreKey(holeIndex, playerIndex)];
-          if (value !== undefined) entered.push(value);
-        }
-        if (!entered.length) return '-';
-        return (entered.reduce((sum, value) => sum + value, 0) / entered.length).toFixed(1);
       });
     }
 
