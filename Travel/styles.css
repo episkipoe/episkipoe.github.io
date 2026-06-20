@@ -65,13 +65,137 @@ input, select { border: 1px solid rgba(255,255,255,.14); background: rgba(16,24,
 .route { color: var(--accent) !important; font-size: .88rem; margin-top: 0; }
 .tags { display: flex; flex-wrap: wrap; gap: .45rem; margin: auto 0 1rem; }
 .tag { border: 1px solid rgba(255,255,255,.14); color: var(--muted); border-radius: 999px; padding: .25rem .55rem; font-size: .8rem; }
-.button { display: inline-flex; width: fit-content; text-decoration: none; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: .7rem 1rem; font-weight: 800; }
+.button { display: inline-flex; width: fit-content; text-decoration: none; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: .7rem 1rem; font: inherit; color: inherit; font-weight: 800; cursor: pointer; }
 .button.primary { background: var(--accent); color: #1b1405; border-color: transparent; white-space: nowrap; }
+.button:disabled { cursor: default; opacity: .62; }
 .empty, footer { color: var(--muted); }
 footer { padding: 2rem 0 4rem; border-top: 1px solid rgba(255,255,255,.08); }
+
+.trivia-page { min-height: 100vh; }
+.trivia-hero { padding-bottom: 1rem; }
+.trivia-hero section { padding: 3.5rem 0 1.25rem; }
+.trivia-main { padding-bottom: 4rem; }
+.quiz-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: .75rem;
+}
+.quiz-board,
+.quiz-atlas {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(29,45,61,.9), rgba(16,24,32,.96));
+  box-shadow: var(--shadow);
+}
+.quiz-board {
+  min-height: 430px;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+.quiz-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--accent-2);
+  font-size: .86rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.quiz-board h2 {
+  margin: 2.25rem 0 1rem;
+  font-size: clamp(1.8rem, 4vw, 3.3rem);
+  line-height: 1.08;
+  max-width: 850px;
+}
+.answer-panel {
+  margin: auto 0 1.25rem;
+  border-left: 4px solid var(--accent);
+  padding: .25rem 0 .35rem 1rem;
+}
+.answer-panel p {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  line-height: 1.35;
+}
+.source-link {
+  display: inline-flex;
+  margin-top: .8rem;
+  color: var(--accent-2);
+  font-weight: 800;
+  text-decoration: none;
+}
+.source-link:hover,
+.source-link:focus-visible { text-decoration: underline; outline: none; }
+.quiz-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: auto; }
+.quiz-atlas {
+  display: grid;
+  grid-template-rows: minmax(240px, 1fr) auto;
+  overflow: hidden;
+}
+.quiz-map {
+  min-height: 280px;
+  padding: 1rem;
+}
+.quiz-map svg { width: 100%; height: 100%; min-height: 250px; display: block; }
+.quiz-map .quiet-stop circle {
+  fill: rgba(186,199,201,.6);
+  stroke: rgba(16,24,32,.9);
+  stroke-width: .3;
+}
+.quiz-map .active-stop circle {
+  fill: var(--accent);
+  stroke: #101820;
+  stroke-width: .45;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.5));
+}
+.quiz-map .active-stop text {
+  fill: var(--text);
+  font-size: 3px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(16,24,32,.92);
+  stroke-width: .8;
+}
+.archive-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.archive-stats div {
+  padding: 1rem;
+  border-right: 1px solid rgba(255,255,255,.1);
+}
+.archive-stats div:last-child { border-right: 0; }
+.archive-stats dt {
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.archive-stats dd {
+  margin: .25rem 0 0;
+  color: var(--text);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 900;
+}
 @media (max-width: 720px) {
   .controls { grid-template-columns: 1fr; }
   .map-panel { grid-template-columns: 1fr; }
   .world-map { min-height: 285px; }
   .map-legend { max-height: 260px; }
+  .trivia-hero section { padding: 2.25rem 0 1rem; }
+  .quiz-layout { grid-template-columns: 1fr; }
+  .quiz-board { min-height: 390px; }
+  .quiz-board h2 { margin-top: 1.5rem; }
+  .quiz-atlas { grid-template-rows: auto auto; }
+  .quiz-map { min-height: 230px; }
+  .archive-stats div { padding: .8rem; }
 }

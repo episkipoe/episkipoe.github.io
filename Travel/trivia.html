@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dave's Travel Trivia</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="trivia-page">
+  <header class="hero trivia-hero">
+    <nav>
+      <a class="brand" href="index.html">Dave's Travelogues</a>
+      <a href="index.html#travels">Travels</a>
+      <a href="index.html#map">Map</a>
+      <a href="trivia.html" aria-current="page">Trivia</a>
+    </nav>
+    <section>
+      <p class="eyebrow">archive quiz</p>
+      <h1>Dave's Travel Trivia</h1>
+    </section>
+  </header>
+
+  <main class="trivia-main">
+    <section class="quiz-layout" aria-label="Travel trivia">
+      <div class="quiz-board">
+        <div class="quiz-topline">
+          <span id="questionCategory">Travel</span>
+          <span id="questionCount">0 / 0</span>
+        </div>
+        <h2 id="questionText">Loading question...</h2>
+        <div id="answerPanel" class="answer-panel" hidden>
+          <p id="answerText"></p>
+          <a id="sourceLink" class="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source doc</a>
+        </div>
+        <div class="quiz-actions">
+          <button id="revealAnswer" class="button primary" type="button">Reveal answer</button>
+          <button id="nextQuestion" class="button" type="button">Next question</button>
+        </div>
+      </div>
+
+      <aside class="quiz-atlas" aria-label="Archive snapshot">
+        <div id="quizMap" class="quiz-map" aria-hidden="true"></div>
+        <dl class="archive-stats">
+          <div>
+            <dt>Docs</dt>
+            <dd id="docTotal">0</dd>
+          </div>
+          <div>
+            <dt>Places</dt>
+            <dd id="placeTotal">0</dd>
+          </div>
+          <div>
+            <dt>Years</dt>
+            <dd id="yearRange">--</dd>
+          </div>
+        </dl>
+      </aside>
+    </section>
+  </main>
+
+  <script src="travelogues.js"></script>
+  <script src="trivia.js"></script>
+</body>
+</html>
