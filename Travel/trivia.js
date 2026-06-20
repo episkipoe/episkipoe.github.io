@@ -1,4 +1,5 @@
 const travels = window.TRAVELOGUES ?? [];
+const contentQuestions = window.TRIVIA_QUESTIONS ?? [];
 
 const categoryEl = document.querySelector('#questionCategory');
 const countEl = document.querySelector('#questionCount');
@@ -11,7 +12,7 @@ const nextButton = document.querySelector('#nextQuestion');
 const quizMap = document.querySelector('#quizMap');
 const docTotal = document.querySelector('#docTotal');
 const placeTotal = document.querySelector('#placeTotal');
-const yearRange = document.querySelector('#yearRange');
+const questionTotal = document.querySelector('#questionTotal');
 
 let questions = [];
 let deck = [];
@@ -22,17 +23,6 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
-function groupBy(items, getKey) {
-  return items.reduce((groups, item) => {
-    const key = getKey(item);
-    if (!key) return groups;
-    const group = groups.get(key) ?? [];
-    group.push(item);
-    groups.set(key, group);
-    return groups;
-  }, new Map());
-}
-
 function shuffle(items) {
   return [...items]
     .map(item => ({ item, sort: Math.random() }))
@@ -40,202 +30,27 @@ function shuffle(items) {
     .map(({ item }) => item);
 }
 
-function subjectFromTitle(title) {
-  return title
-    .replace(/^\d{4}(?:\s*\/\s*\d{1,2})?(?:\s*\/\s*\d{1,2})?\s*-?\s*/, '')
-    .trim() || title;
-}
-
-function formatList(values) {
-  if (!values.length) return '';
-  if (values.length === 1) return values[0];
-  if (values.length === 2) return `${values[0]} and ${values[1]}`;
-  return `${values.slice(0, -1).join(', ')}, and ${values.at(-1)}`;
-}
-
-function routeFor(trip) {
-  const stops = trip.stops?.map(stop => stop.name) ?? [];
-  return stops.length ? formatList(stops) : trip.place;
-}
-
-function tagLabel(tags) {
-  return tags.length ? formatList(tags) : 'general travel notes';
-}
-
-function sourceFor(trip) {
-  return {
-    title: trip.title,
-    url: trip.url,
-    trip
-  };
-}
-
-function addTripQuestions(bank, trip) {
-  bank.push({
-    category: 'Place',
-    prompt: `Where does the archive place "${trip.title}"?`,
-    answer: `${routeFor(trip)}.`,
-    ...sourceFor(trip)
-  });
-
-  if (Number.isFinite(trip.year)) {
-    bank.push({
-      category: 'Year',
-      prompt: `What year is "${subjectFromTitle(trip.title)}" from?`,
-      answer: `${trip.year}.`,
-      ...sourceFor(trip)
-    });
-  }
-
-  if (trip.tags.length) {
-    bank.push({
-      category: 'Tag',
-      prompt: `What archive tag does "${trip.title}" carry?`,
-      answer: `${tagLabel(trip.tags)}.`,
-      ...sourceFor(trip)
-    });
-  }
-}
-
-function addAggregateQuestions(bank) {
-  const years = unique(travels.map(trip => trip.year)).filter(Number.isFinite).sort((a, b) => a - b);
-  const byPlace = groupBy(travels, trip => trip.place);
-  const byYear = groupBy(travels, trip => trip.year);
-  const byTag = groupBy(travels.flatMap(trip => trip.tags.map(tag => ({ tag, trip }))), item => item.tag);
-  const topPlace = [...byPlace.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0];
-  const topYear = [...byYear.entries()].sort((a, b) => b[1].length - a[1].length || b[0] - a[0])[0];
-  const earliest = travels.filter(trip => Number.isFinite(trip.year)).sort((a, b) => a.year - b.year || a.title.localeCompare(b.title))[0];
-  const latest = travels.filter(trip => Number.isFinite(trip.year)).sort((a, b) => b.year - a.year || a.title.localeCompare(b.title))[0];
-
-  bank.push({
-    category: 'Archive',
-    prompt: 'How many entries are in the travelogue archive?',
-    answer: `${travels.length} entries.`
-  });
-
-  bank.push({
-    category: 'Archive',
-    prompt: 'How many mapped places show up across the archive?',
-    answer: `${byPlace.size} places.`
-  });
-
-  if (years.length) {
-    bank.push({
-      category: 'Archive',
-      prompt: 'What span of years does the archive cover?',
-      answer: `${years[0]} through ${years.at(-1)}.`
-    });
-  }
-
-  if (topPlace) {
-    bank.push({
-      category: 'Archive',
-      prompt: 'Which place shows up the most in the archive?',
-      answer: `${topPlace[0]}, with ${topPlace[1].length} entries.`
-    });
-  }
-
-  if (topYear) {
-    bank.push({
-      category: 'Archive',
-      prompt: 'Which year has the most archive entries?',
-      answer: `${topYear[0]}, with ${topYear[1].length} entries.`
-    });
-  }
-
-  if (earliest) {
-    bank.push({
-      category: 'Archive',
-      prompt: 'Which entry is earliest in the archive?',
-      answer: `"${earliest.title}" from ${earliest.year}.`,
-      ...sourceFor(earliest)
-    });
-  }
-
-  if (latest) {
-    bank.push({
-      category: 'Archive',
-      prompt: 'Which entry is newest in the archive?',
-      answer: `"${latest.title}" from ${latest.year}.`,
-      ...sourceFor(latest)
-    });
-  }
-
-  byTag.forEach((items, tag) => {
-    bank.push({
-      category: 'Tag',
-      prompt: `How many archive entries are tagged "${tag}"?`,
-      answer: `${items.length} entries.`
-    });
-  });
-}
-
-function findTrip(pattern) {
-  return travels.find(trip => pattern.test(trip.title));
-}
-
-function addJokeQuestions(bank) {
-  const jokeSeeds = [
-    {
-      pattern: /T3: Revenge of the Burrito/i,
-      prompt: 'Which title sounds like the third film in a burrito action franchise?',
-      answer: trip => `"${trip.title}". The sequel energy is extremely specific.`
-    },
-    {
-      pattern: /Toothpaste/i,
-      prompt: 'Which archive entry appears to have packed oral hygiene as the destination?',
-      answer: trip => `"${trip.title}". Minty, mysterious, and somehow filed under travel.`
-    },
-    {
-      pattern: /Electriquarium/i,
-      prompt: 'Which title sounds like an aquarium that voided the warranty?',
-      answer: trip => `"${trip.title}". Water, electricity, and confidence: a bold itinerary.`
-    },
-    {
-      pattern: /100 Songs for Tacos/i,
-      prompt: 'Which travelogue sounds like a playlist with excellent priorities?',
-      answer: trip => `"${trip.title}". Finally, a soundtrack with dinner built in.`
-    },
-    {
-      pattern: /Something wicked this May comes/i,
-      prompt: 'Which title turns spring scheduling into theater?',
-      answer: trip => `"${trip.title}". Calendar anxiety, but make it literary.`
-    },
-    {
-      pattern: /Tempel of Steel/i,
-      prompt: 'Which entry sounds like a heavy-metal typo became a destination?',
-      answer: trip => `"${trip.title}". The archive respects commitment to the bit.`
-    },
-    {
-      pattern: /Oneliners/i,
-      prompt: 'Which document namechecks Milton Jones, Gary Delany, Tim Vine, and James Acaster?',
-      answer: trip => `"${trip.title}". The comedy shelf is in the travel archive now.`
-    },
-    {
-      pattern: /Selfies of the mind/i,
-      prompt: 'Which entry sounds like a camera roll for the inside of your head?',
-      answer: trip => `"${trip.title}". The TSA has no policy for that luggage.`
-    }
-  ];
-
-  jokeSeeds.forEach(seed => {
-    const trip = findTrip(seed.pattern);
-    if (!trip) return;
-    bank.push({
-      category: 'Joke',
-      prompt: seed.prompt,
-      answer: seed.answer(trip),
-      ...sourceFor(trip)
-    });
-  });
+function findTrip(sourceTitle) {
+  if (!sourceTitle) return null;
+  return travels.find(trip => trip.title === sourceTitle) ??
+    travels.find(trip => trip.title.includes(sourceTitle)) ??
+    null;
 }
 
 function buildQuestions() {
-  const bank = [];
-  travels.forEach(trip => addTripQuestions(bank, trip));
-  addAggregateQuestions(bank);
-  addJokeQuestions(bank);
-  return bank;
+  return contentQuestions
+    .map(question => {
+      const trip = findTrip(question.source);
+      return {
+        category: question.category || 'In-Joke',
+        prompt: question.prompt,
+        answer: question.answer,
+        title: trip?.title || question.source || 'Source doc',
+        url: trip?.url || '',
+        trip
+      };
+    })
+    .filter(question => question.prompt && question.answer);
 }
 
 function project(stop) {
@@ -254,8 +69,9 @@ function escapeHtml(value) {
 }
 
 function renderMap(activeTrip) {
-  const stops = unique(travels.flatMap(trip => trip.stops ?? []).map(stop => stop.name))
-    .map(name => travels.flatMap(trip => trip.stops ?? []).find(stop => stop.name === name));
+  const allStops = travels.flatMap(trip => trip.stops ?? []);
+  const stops = unique(allStops.map(stop => stop.name))
+    .map(name => allStops.find(stop => stop.name === name));
   const activeStops = new Set((activeTrip?.stops ?? []).map(stop => stop.name));
   const markers = stops.map(stop => {
     const point = project(stop);
@@ -283,11 +99,10 @@ function renderMap(activeTrip) {
 }
 
 function updateStats() {
-  const years = unique(travels.map(trip => trip.year)).filter(Number.isFinite).sort((a, b) => a - b);
   const places = unique(travels.map(trip => trip.place));
   docTotal.textContent = travels.length;
   placeTotal.textContent = places.length;
-  yearRange.textContent = years.length ? `${years[0]}-${years.at(-1)}` : '--';
+  questionTotal.textContent = questions.length;
 }
 
 function setSource(question) {
@@ -299,7 +114,7 @@ function setSource(question) {
 
   sourceLink.hidden = false;
   sourceLink.href = question.url;
-  sourceLink.textContent = question.title ? `Open "${question.title}"` : 'Open source doc';
+  sourceLink.textContent = 'Open source doc';
 }
 
 function showQuestion(question) {
@@ -319,7 +134,7 @@ function nextQuestion() {
   if (!questions.length) {
     categoryEl.textContent = 'Archive';
     countEl.textContent = '0 / 0';
-    questionEl.textContent = 'No travel entries were found.';
+    questionEl.textContent = 'No content questions were found.';
     answerPanel.hidden = true;
     revealButton.disabled = true;
     nextButton.disabled = true;
