@@ -175,6 +175,29 @@
       line-height: 1.35;
     }
 
+    .name-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .person-link {
+      width: auto;
+      min-height: 30px;
+      padding: 0 10px;
+      border-color: rgba(31, 122, 140, 0.28);
+      background: rgba(31, 122, 140, 0.08);
+      color: var(--accent);
+      font-size: 0.88rem;
+      font-weight: 750;
+    }
+
+    .person-link:hover,
+    .person-link:focus-visible {
+      background: rgba(31, 122, 140, 0.14);
+      transform: translateY(-1px);
+    }
+
     .stats {
       display: grid;
       grid-template-columns: 1fr;
@@ -339,7 +362,13 @@
 
     .person-node.is-match .avatar {
       stroke: var(--gold);
-      stroke-width: 4;
+      stroke-width: 5;
+      filter: drop-shadow(0 0 0 rgba(187, 138, 29, 0.45)) drop-shadow(0 14px 18px rgba(187, 138, 29, 0.24));
+    }
+
+    .person-node.is-match .node-label {
+      font-size: 0.86rem;
+      font-weight: 850;
     }
 
     .person-node.is-dimmed,
