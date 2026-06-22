@@ -73,13 +73,12 @@
       d3
         .forceLink(links)
         .id((d) => d.id)
-        .distance((d) => (d.type === "partner" ? 72 : 132))
-        .strength((d) => (d.type === "partner" ? 0.96 : 0.26))
+        .distance((d) => (d.type === "partner" ? 72 : 170))
+        .strength((d) => (d.type === "partner" ? 1 : 0.68))
     )
-    .force("charge", d3.forceManyBody().strength(-360))
+    .force("charge", d3.forceManyBody().strength(-290))
     .force("collision", d3.forceCollide().radius((d) => d.radius + 34).iterations(2))
-    .force("x", d3.forceX((d) => d.targetX).strength(0.72))
-    .force("y", d3.forceY((d) => d.targetY).strength(0.96))
+    .force("x", d3.forceX((d) => d.targetX).strength(0.42))
     .on("tick", ticked);
 
   svg.call(zoom);
@@ -192,6 +191,13 @@
   }
 
   function ticked() {
+    // Generations are structural rows, not soft suggestions. Forces may arrange
+    // relatives horizontally, but they never move a person between row levels.
+    nodes.forEach((node) => {
+      node.y = node.targetY;
+      node.vy = 0;
+    });
+
     linkLayer
       .selectAll("line")
       .attr("x1", (d) => d.source.x)
@@ -359,8 +365,7 @@
     svg.attr("viewBox", `0 0 ${width()} ${height()}`);
     updateLayeredTargets();
     simulation
-      .force("x", d3.forceX((d) => d.targetX).strength(0.72))
-      .force("y", d3.forceY((d) => d.targetY).strength(0.96))
+      .force("x", d3.forceX((d) => d.targetX).strength(0.42))
       .alpha(0.32)
       .restart();
   }
@@ -654,17 +659,14 @@
   function dragStarted(event, d) {
     if (!event.active) simulation.alphaTarget(0.25).restart();
     d.fx = d.x;
-    d.fy = d.y;
   }
 
   function dragged(event, d) {
     d.fx = event.x;
-    d.fy = event.y;
   }
 
   function dragEnded(event, d) {
     if (!event.active) simulation.alphaTarget(0);
     d.fx = event.x;
-    d.fy = event.y;
   }
 })();
