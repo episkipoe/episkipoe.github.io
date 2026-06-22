@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <title>Farkle Score Tracker</title>
+  <style>
+    :root {
+      --ink: #241d18; --muted: #75685e; --line: #ded4ca; --paper: #fffdf9;
+      --page: #f6efe5; --red: #a93226; --red-dark: #7f241c; --gold: #d99a2b;
+      --green: #276749; --green-soft: #dff3e8; --red-soft: #fae3df;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--ink); background: radial-gradient(circle at top, #fff9ed, var(--page) 40rem); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width: min(920px, calc(100vw - 24px)); margin: 0 auto; padding: 24px 0 48px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 4px; font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .panel { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,249,.96); box-shadow: 0 16px 36px rgba(70,45,25,.1); }
+    #setupPanel { padding: 20px; }
+    .setup-head, .actions, .turn-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .setup-head h2 { margin: 0; }
+    .player-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 18px 0; }
+    .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 12px; margin-bottom: 18px; }
+    label { display: grid; gap: 6px; color: var(--muted); font-size: .85rem; font-weight: 800; }
+    input { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; color: var(--ink); font: inherit; }
+    button { min-height: 42px; border: 0; border-radius: 8px; padding: 0 16px; background: var(--red); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+    button:hover { background: var(--red-dark); }
+    button.secondary { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+    button.secondary:hover { background: #f8f3ed; }
+    button.danger { background: #6f1d1b; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(217,154,43,.4); outline-offset: 2px; }
+    #gamePanel { display: none; overflow: hidden; }
+    body.game-active #setupPanel { display: none; }
+    body.game-active #gamePanel { display: block; }
+    .status { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+    .status-card { min-width: 0; padding: 15px; border-right: 1px solid var(--line); }
+    .status-card:last-child { border: 0; }
+    .eyebrow { color: var(--muted); font-size: .72rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+    .status-value { margin-top: 4px; font-size: clamp(1.15rem, 4vw, 1.8rem); font-weight: 900; overflow-wrap: anywhere; }
+    .game-body { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .8fr); }
+    .turn-panel { padding: 20px; border-right: 1px solid var(--line); }
+    .turn-title { margin-bottom: 4px; }
+    .turn-score { margin: 16px 0; color: var(--red); font-size: clamp(3.5rem, 13vw, 6rem); font-weight: 900; line-height: 1; text-align: center; }
+    .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .chip { background: #f1e4d2; color: var(--ink); }
+    .chip:hover { background: #e6d2b7; }
+    .custom-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 10px 0; }
+    .turn-actions { margin-top: 12px; }
+    .bank { flex: 1; background: var(--green); }
+    .farkle { flex: 1; background: var(--red); }
+    .side { min-width: 0; }
+    .side h2 { margin: 0; padding: 18px 18px 10px; font-size: 1.1rem; }
+    .leaderboard { margin: 0; padding: 0 18px 16px; list-style: none; }
+    .player-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .player-row.active { color: var(--red); font-weight: 900; }
+    .rank { color: var(--muted); }
+    .total { font-variant-numeric: tabular-nums; font-weight: 900; }
+    .progress { grid-column: 2 / 4; height: 5px; overflow: hidden; border-radius: 99px; background: #eadfd4; }
+    .progress span { display: block; height: 100%; background: var(--gold); }
+    .history-wrap { max-height: 235px; overflow: auto; border-top: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { position: sticky; top: 0; background: #f5ede3; color: var(--muted); font-size: .75rem; text-transform: uppercase; }
+    td:last-child, th:last-child { text-align: right; }
+    .zero { color: var(--red); font-weight: 800; }
+    .footer-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: #fbf7f1; }
+    .winner-banner { display: none; padding: 16px; background: var(--green-soft); color: var(--green); text-align: center; font-size: 1.2rem; font-weight: 900; }
+    .winner-banner.show { display: block; }
+    .note { margin: 10px 0 0; color: var(--muted); font-size: .82rem; text-align: center; }
+    @media (max-width: 700px) {
+      main { width: min(100vw - 10px, 920px); padding: 5px 0; }
+      header { display: none; }
+      .game-body { grid-template-columns: 1fr; }
+      .turn-panel { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px; }
+      .turn-score { margin: 10px 0; }
+      .status-card { padding: 10px 8px; }
+      .chips { grid-template-columns: repeat(3, 1fr); }
+      .chip { padding: 0 8px; }
+      .side h2 { padding-top: 12px; }
+      .history-wrap { max-height: 175px; }
+      .settings { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header><div><h1>Farkle</h1><p class="subtitle">The race to 10,000. Try not to get greedy.</p></div></header>
+
+    <section id="setupPanel" class="panel" aria-labelledby="setupTitle">
+      <div class="setup-head"><h2 id="setupTitle">Players</h2><button class="secondary" type="button" onclick="addPlayer()">Add Player</button></div>
+      <div id="playerFields" class="player-grid"></div>
+      <div class="settings">
+        <label>Winning score<input id="targetInput" type="number" inputmode="numeric" min="1000" step="500" value="10000"></label>
+        <label>Opening score<input id="openingInput" type="number" inputmode="numeric" min="0" step="50" value="500"></label>
+      </div>
+      <div class="actions"><button type="button" onclick="startNewGame()">Start Game</button><button class="secondary" type="button" onclick="removePlayer()">Remove Player</button></div>
+    </section>
+
+    <section id="gamePanel" class="panel" aria-label="Farkle score tracker">
+      <div id="winnerBanner" class="winner-banner"></div>
+      <div class="status">
+        <div class="status-card"><div class="eyebrow">Up now</div><div id="currentPlayer" class="status-value">Player 1</div></div>
+        <div class="status-card"><div class="eyebrow">Leader</div><div id="leader" class="status-value">—</div></div>
+        <div class="status-card"><div class="eyebrow">Goal</div><div id="target" class="status-value">10,000</div></div>
+      </div>
+      <div class="game-body">
+        <div class="turn-panel">
+          <h2 class="turn-title">Turn score</h2>
+          <div id="turnScore" class="turn-score" aria-live="polite">0</div>
+          <div class="chips" aria-label="Quick score buttons">
+            <button class="chip" type="button" onclick="addScore(50)">+50</button>
+            <button class="chip" type="button" onclick="addScore(100)">+100</button>
+            <button class="chip" type="button" onclick="addScore(500)">+500</button>
+            <button class="chip" type="button" onclick="addScore(1000)">+1,000</button>
+            <button class="chip" type="button" onclick="addScore(-50)">−50</button>
+            <button class="chip" type="button" onclick="clearTurn()">Clear</button>
+          </div>
+          <div class="custom-row"><input id="customScore" type="number" inputmode="numeric" min="0" step="50" placeholder="Custom score"><button class="secondary" type="button" onclick="setCustomScore()">Set</button></div>
+          <div class="turn-actions"><button class="farkle" type="button" onclick="recordTurn(0)">Farkle — 0</button><button class="bank" type="button" onclick="bankTurn()">Bank Score</button></div>
+          <p id="openingNote" class="note"></p>
+        </div>
+        <aside class="side"><h2>Scoreboard</h2><ol id="leaderboard" class="leaderboard"></ol></aside>
+      </div>
+      <div class="history-wrap"><table><thead><tr><th>Turn</th><th>Player</th><th>Scored</th><th>Total</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+      <div class="footer-actions"><div><button class="secondary" type="button" onclick="undoTurn()">Undo Last Turn</button> <button class="secondary" type="button" onclick="showSetup()">Edit Players</button></div><button class="danger" type="button" onclick="clearGame()">Clear Game</button></div>
+    </section>
+  </main>
+  <script>
+    const storageKey = 'farkleScoreTracker';
+    let players = ['Player 1', 'Player 2', 'Player 3'];
+    let history = [];
+    let currentPlayerIndex = 0;
+    let turnScore = 0;
+    let targetScore = 10000;
+    let openingScore = 500;
+    let finalStarter = null;
+    let gameOver = false;
+
+    function renderPlayerFields() {
+      document.getElementById('playerFields').innerHTML = players.map((name, index) => `<label>Player ${index + 1}<input id="player_${index}" type="text" value="${escapeHtml(name)}" placeholder="Player ${index + 1}"></label>`).join('');
+    }
+    function readPlayerNames() { return Array.from(document.querySelectorAll('#playerFields input')).map((input, index) => input.value.trim() || `Player ${index + 1}`); }
+    function addPlayer() { players = readPlayerNames(); players.push(`Player ${players.length + 1}`); renderPlayerFields(); document.getElementById(`player_${players.length - 1}`).focus(); }
+    function removePlayer() { players = readPlayerNames(); if (players.length <= 2) return; players.pop(); renderPlayerFields(); }
+    function startNewGame() {
+      players = readPlayerNames(); targetScore = clamp(document.getElementById('targetInput').value, 1000, 100000, 10000); openingScore = clamp(document.getElementById('openingInput').value, 0, targetScore, 500);
+      history = []; currentPlayerIndex = 0; turnScore = 0; finalStarter = null; gameOver = false; document.body.classList.add('game-active'); render(); saveGame();
+    }
+    function getTotals() { const totals = players.map(() => 0); history.forEach(turn => { totals[turn.playerIndex] += turn.score; }); return totals; }
+    function addScore(amount) { if (gameOver) return; turnScore = Math.max(0, turnScore + amount); renderTurn(); saveGame(); }
+    function clearTurn() { turnScore = 0; renderTurn(); saveGame(); }
+    function setCustomScore() { const value = Number(document.getElementById('customScore').value); if (!Number.isFinite(value) || value < 0) return; turnScore = Math.floor(value); document.getElementById('customScore').value = ''; renderTurn(); saveGame(); }
+    function bankTurn() {
+      const totals = getTotals();
+      if (totals[currentPlayerIndex] === 0 && turnScore < openingScore) { document.getElementById('openingNote').textContent = `${players[currentPlayerIndex]} needs at least ${format(openingScore)} to get on the board.`; return; }
+      recordTurn(turnScore);
+    }
+    function recordTurn(score) {
+      if (gameOver) return;
+      const playerIndex = currentPlayerIndex;
+      history.push({ playerIndex, score, total: getTotals()[playerIndex] + score });
+      turnScore = 0;
+      const newTotal = getTotals()[playerIndex];
+      if (finalStarter === null && newTotal >= targetScore) finalStarter = playerIndex;
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      if (finalStarter !== null && currentPlayerIndex === finalStarter) gameOver = true;
+      render(); saveGame();
+    }
+    function undoTurn() {
+      if (!history.length) return;
+      const last = history.pop(); currentPlayerIndex = last.playerIndex; turnScore = 0; gameOver = false; finalStarter = null;
+      const totals = getTotals();
+      for (let i = 0; i < history.length; i++) if (history[i].total >= targetScore) { finalStarter = history[i].playerIndex; break; }
+      render(); saveGame();
+    }
+    function render() { renderTurn(); renderStatus(); renderLeaderboard(); renderHistory(); }
+    function renderTurn() {
+      document.getElementById('turnScore').textContent = format(turnScore);
+      const totals = getTotals();
+      document.getElementById('openingNote').textContent = !gameOver && totals[currentPlayerIndex] === 0 && openingScore > 0 ? `Bank at least ${format(openingScore)} to get on the board.` : finalStarter !== null && !gameOver ? 'Final round — everyone else gets one last turn.' : '';
+    }
+    function renderStatus() {
+      const totals = getTotals(); const high = Math.max(...totals);
+      document.getElementById('currentPlayer').textContent = gameOver ? 'Game over' : players[currentPlayerIndex];
+      document.getElementById('leader').textContent = history.length ? players.filter((p, i) => totals[i] === high).join(', ') : '—';
+      document.getElementById('target').textContent = format(targetScore);
+      const banner = document.getElementById('winnerBanner');
+      banner.classList.toggle('show', gameOver);
+      banner.textContent = gameOver ? `🏆 ${players.filter((p, i) => totals[i] === high).join(' & ')} ${players.filter((p, i) => totals[i] === high).length > 1 ? 'tie' : 'wins'} with ${format(high)}!` : '';
+    }
+    function renderLeaderboard() {
+      const totals = getTotals(); const order = players.map((name, index) => ({ name, index, total: totals[index] })).sort((a, b) => b.total - a.total);
+      document.getElementById('leaderboard').innerHTML = order.map((player, rank) => `<li class="player-row ${!gameOver && player.index === currentPlayerIndex ? 'active' : ''}"><span class="rank">${rank + 1}</span><span>${escapeHtml(player.name)}</span><span class="total">${format(player.total)}</span><span class="progress"><span style="width:${Math.min(100, player.total / targetScore * 100)}%"></span></span></li>`).join('');
+    }
+    function renderHistory() {
+      document.getElementById('historyBody').innerHTML = history.length ? history.slice().reverse().map((turn, reverseIndex) => `<tr><td>${history.length - reverseIndex}</td><td>${escapeHtml(players[turn.playerIndex])}</td><td class="${turn.score === 0 ? 'zero' : ''}">${turn.score === 0 ? 'Farkle' : '+' + format(turn.score)}</td><td>${format(turn.total)}</td></tr>`).join('') : '<tr><td colspan="4">No turns yet.</td></tr>';
+    }
+    function showSetup() { players = players.slice(); renderPlayerFields(); document.getElementById('targetInput').value = targetScore; document.getElementById('openingInput').value = openingScore; document.body.classList.remove('game-active'); saveGame(); }
+    function clearGame() { localStorage.removeItem(storageKey); players = ['Player 1', 'Player 2', 'Player 3']; history = []; currentPlayerIndex = 0; turnScore = 0; targetScore = 10000; openingScore = 500; finalStarter = null; gameOver = false; document.body.classList.remove('game-active'); renderPlayerFields(); document.getElementById('targetInput').value = targetScore; document.getElementById('openingInput').value = openingScore; }
+    function saveGame() { localStorage.setItem(storageKey, JSON.stringify({ players, history, currentPlayerIndex, turnScore, targetScore, openingScore, finalStarter, gameOver, active: document.body.classList.contains('game-active') })); }
+    function loadGame() {
+      const data = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (data) { players = Array.isArray(data.players) && data.players.length >= 2 ? data.players : players; history = Array.isArray(data.history) ? data.history : []; currentPlayerIndex = Number(data.currentPlayerIndex) || 0; turnScore = Number(data.turnScore) || 0; targetScore = Number(data.targetScore) || targetScore; openingScore = Number(data.openingScore) || 0; finalStarter = data.finalStarter ?? null; gameOver = !!data.gameOver; document.body.classList.toggle('game-active', !!data.active); }
+      renderPlayerFields(); document.getElementById('targetInput').value = targetScore; document.getElementById('openingInput').value = openingScore; if (document.body.classList.contains('game-active')) render();
+    }
+    function clamp(value, min, max, fallback) { const number = Number(value); return Number.isFinite(number) ? Math.min(max, Math.max(min, Math.floor(number))) : fallback; }
+    function format(value) { return Number(value).toLocaleString(); }
+    function escapeHtml(value) { return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
+    window.addEventListener('load', loadGame);
+  </script>
+</body>
+</html>
