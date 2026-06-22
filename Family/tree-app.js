@@ -62,6 +62,7 @@
   });
 
   let selectedId = members.find((member) => member.featured)?.id ?? members[0]?.id;
+  let comparisonId = null;
   let searchTerm = "";
   let activeGeneration = "all";
   let searchTimer = null;
@@ -73,11 +74,11 @@
       d3
         .forceLink(links)
         .id((d) => d.id)
-        .distance((d) => (d.type === "partner" ? 72 : 170))
+        .distance((d) => (d.type === "partner" ? 80 : 170))
         .strength((d) => (d.type === "partner" ? 1 : 0.68))
     )
     .force("charge", d3.forceManyBody().strength(-290))
-    .force("collision", d3.forceCollide().radius((d) => d.radius + 34).iterations(2))
+    .force("collision", d3.forceCollide().radius((d) => d.radius + 34).iterations(4))
     .force("x", d3.forceX((d) => d.targetX).strength(0.42))
     .on("tick", ticked);
 
@@ -116,6 +117,7 @@
       searchTerm = "";
       activeGeneration = "all";
       selectedId = members.find((member) => member.featured)?.id ?? members[0]?.id;
+      comparisonId = null;
       nodes.forEach((node) => {
         node.fx = null;
         node.fy = null;
@@ -129,7 +131,7 @@
     details.addEventListener("click", (event) => {
       const button = event.target.closest("[data-person-id]");
       if (!button) return;
-      updateSelection(Number(button.dataset.personId));
+      selectPerson(event, Number(button.dataset.personId));
     });
   }
 
@@ -150,11 +152,11 @@
           .attr("tabindex", 0)
           .attr("role", "button")
           .attr("aria-label", (d) => `Select ${d.name}`)
-          .on("click", (event, d) => updateSelection(d.id))
+          .on("click", (event, d) => selectPerson(event, d.id))
           .on("keydown", (event, d) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              updateSelection(d.id);
+              selectPerson(event, d.id);
             }
           })
           .call(
@@ -166,8 +168,13 @@
           );
 
         group
-          .append("circle")
-          .attr("r", (d) => d.radius)
+          .append((d) => document.createElementNS("http://www.w3.org/2000/svg", d.gender === "M" ? "rect" : "circle"))
+          .attr("r", (d) => d.gender === "M" ? null : d.radius)
+          .attr("x", (d) => d.gender === "M" ? -d.radius : null)
+          .attr("y", (d) => d.gender === "M" ? -d.radius : null)
+          .attr("width", (d) => d.gender === "M" ? d.radius * 2 : null)
+          .attr("height", (d) => d.gender === "M" ? d.radius * 2 : null)
+          .attr("rx", (d) => d.gender === "M" ? 5 : null)
           .attr("class", (d) => `avatar ${genderClass(d.gender)}`);
 
         group
@@ -197,6 +204,7 @@
       node.y = node.targetY;
       node.vy = 0;
     });
+    lockPartnerPairs();
 
     linkLayer
       .selectAll("line")
@@ -208,9 +216,27 @@
     nodeLayer.selectAll(".person-node").attr("transform", (d) => `translate(${d.x},${d.y})`);
   }
 
+  function lockPartnerPairs() {
+    partnerLinks.forEach((link) => {
+      const first = typeof link.source === "object" ? link.source : nodeById.get(link.source);
+      const second = typeof link.target === "object" ? link.target : nodeById.get(link.target);
+      if (!first || !second || first.generation !== second.generation) return;
+
+      const pair = [first, second].sort(comparePartnerPair);
+      const centerX = (first.x + second.x) / 2;
+      pair[0].x = centerX - 40;
+      pair[1].x = centerX + 40;
+      pair[0].vx = 0;
+      pair[1].vx = 0;
+    });
+  }
+
   function applyState() {
     const visibleIds = visibleNodeIds();
     const connectedIds = connectedNodeIds(selectedId);
+    if (comparisonId !== null) {
+      connectedNodeIds(comparisonId).forEach((id) => connectedIds.add(id));
+    }
     const matchedIds = matchingNodeIds();
     const isSearching = searchTerm.length > 0;
 
@@ -219,7 +245,7 @@
       const visible = visibleIds.has(d.id);
       const connected = connectedIds.has(d.id);
       d3.select(this)
-        .classed("is-selected", d.id === selectedId)
+        .classed("is-selected", d.id === selectedId || d.id === comparisonId)
         .classed("is-match", Boolean(isSearching && matched))
         .classed("is-dimmed", isSearching ? !matched : !visible || !connected)
         .attr("aria-hidden", visible ? "false" : "true");
@@ -270,13 +296,155 @@
     if (options.center) centerNode(member, options.scale);
   }
 
+  function selectPerson(event, id) {
+    if (event.ctrlKey && id !== selectedId) {
+      comparisonId = comparisonId === id ? null : id;
+      applyState();
+      return;
+    }
+    comparisonId = null;
+    updateSelection(id);
+  }
+
   function updateStats(visibleIds) {
     const generations = new Set(nodes.filter((node) => visibleIds.has(node.id)).map((node) => node.generation));
+    const relationship = comparisonId === null ? "" : relationshipSummary(selectedId, comparisonId);
     stats.innerHTML = `
+      ${relationship ? `<span class="relationship-result">${relationship}</span>` : ""}
       <span><strong>${visibleIds.size}</strong> people</span>
       <span><strong>${partnerLinks.length}</strong> partner links</span>
       <span><strong>${generations.size}</strong> generations shown</span>
     `;
+  }
+
+  function relationshipSummary(firstId, secondId) {
+    const first = nodeById.get(firstId);
+    const second = nodeById.get(secondId);
+    if (!first || !second) return "";
+    return `<strong>${escapeHtml(second.name)}</strong> is ${escapeHtml(relationshipTo(second, first))} of ${escapeHtml(first.name)}.`;
+  }
+
+  function relationshipTo(subject, reference) {
+    if (arePartners(subject.id, reference.id)) return genderWord(subject, "husband", "wife", "spouse");
+    const bloodRelationship = bloodRelationshipTo(subject, reference);
+    if (bloodRelationship) return bloodRelationship;
+
+    const subjectPartners = partnerIds(subject.id);
+    const referencePartners = partnerIds(reference.id);
+
+    // A person married to the reference's blood relative, or a blood relative
+    // of the reference's spouse, is related by marriage.
+    for (const partnerId of subjectPartners) {
+      const relation = bloodRelationshipTo(nodeById.get(partnerId), reference);
+      if (relation) return inLawWord(subject, relation);
+    }
+    for (const partnerId of referencePartners) {
+      const relation = bloodRelationshipTo(subject, nodeById.get(partnerId));
+      if (relation) return inLawWord(subject, relation);
+    }
+
+    // Spouses of two siblings (Jon Bennett and Michael Schlung, for example)
+    // are also siblings-in-law even though neither is a blood relative of the other.
+    for (const subjectPartnerId of subjectPartners) {
+      for (const referencePartnerId of referencePartners) {
+        const relation = bloodRelationshipTo(nodeById.get(subjectPartnerId), nodeById.get(referencePartnerId));
+        if (relation) return inLawWord(subject, relation);
+      }
+    }
+
+    return "not a known relation";
+  }
+
+  function bloodRelationshipTo(subject, reference) {
+    if (!subject || !reference || subject.id === reference.id) return null;
+
+    const subjectAncestors = ancestorDistances(subject.id);
+    const referenceAncestors = ancestorDistances(reference.id);
+    if (referenceAncestors.has(subject.id)) {
+      return ancestorWord(subject, referenceAncestors.get(subject.id));
+    }
+    if (subjectAncestors.has(reference.id)) {
+      return descendantWord(subject, subjectAncestors.get(reference.id));
+    }
+
+    const common = [...subjectAncestors.keys()]
+      .filter((id) => referenceAncestors.has(id))
+      .map((id) => ({ subjectDistance: subjectAncestors.get(id), referenceDistance: referenceAncestors.get(id) }))
+      .sort((a, b) => a.subjectDistance + a.referenceDistance - b.subjectDistance - b.referenceDistance)[0];
+
+    if (!common) return null;
+    const { subjectDistance, referenceDistance } = common;
+    if (subjectDistance === 1 && referenceDistance === 1) {
+      return genderWord(subject, "brother", "sister", "sibling");
+    }
+    if (subjectDistance === 1 && referenceDistance > 1) {
+      const greats = Math.max(0, referenceDistance - 2);
+      return `${"great-".repeat(greats)}${genderWord(subject, "uncle", "aunt", "aunt or uncle")}`;
+    }
+    if (referenceDistance === 1 && subjectDistance > 1) {
+      const greats = Math.max(0, subjectDistance - 2);
+      return `${"great-".repeat(greats)}${genderWord(subject, "nephew", "niece", "niece or nephew")}`;
+    }
+
+    const degree = Math.min(subjectDistance, referenceDistance) - 1;
+    const removed = Math.abs(subjectDistance - referenceDistance);
+    return `${ordinal(degree)} cousin${removed ? ` ${removed === 1 ? "once" : `${removed} times`} removed` : ""}`;
+  }
+
+  function partnerIds(id) {
+    const ids = [];
+    partnerPairs.forEach((pair) => {
+      if (pair.source === id || pair.source.id === id) ids.push(pair.target.id ?? pair.target);
+      if (pair.target === id || pair.target.id === id) ids.push(pair.source.id ?? pair.source);
+    });
+    return [...new Set(ids)];
+  }
+
+  function inLawWord(person, relation) {
+    if (/brother|sister|sibling/.test(relation)) return genderWord(person, "brother-in-law", "sister-in-law", "sibling-in-law");
+    if (/father|mother|parent/.test(relation)) return genderWord(person, "father-in-law", "mother-in-law", "parent-in-law");
+    if (/son|daughter|child/.test(relation)) return genderWord(person, "son-in-law", "daughter-in-law", "child-in-law");
+    // Everyday kinship treats the spouse of an aunt/uncle as an aunt/uncle,
+    // rather than the technically possible but uncommon "aunt/uncle-in-law."
+    if (/uncle|aunt/.test(relation)) return genderWord(person, "uncle", "aunt", "aunt or uncle");
+    if (/nephew|niece/.test(relation)) return genderWord(person, "nephew", "niece", "niece or nephew");
+    return `${relation} by marriage`;
+  }
+
+  function ancestorDistances(id) {
+    const distances = new Map();
+    const queue = parentIds(nodeById.get(id)).map((parentId) => [parentId, 1]);
+    while (queue.length) {
+      const [ancestorId, distance] = queue.shift();
+      if (distances.has(ancestorId) && distances.get(ancestorId) <= distance) continue;
+      distances.set(ancestorId, distance);
+      parentIds(nodeById.get(ancestorId)).forEach((parentId) => queue.push([parentId, distance + 1]));
+    }
+    return distances;
+  }
+
+  function arePartners(firstId, secondId) {
+    return partnerPairs.has([Math.min(firstId, secondId), Math.max(firstId, secondId)].join("-"));
+  }
+
+  function ancestorWord(person, distance) {
+    if (distance === 1) return genderWord(person, "father", "mother", "parent");
+    return `${"great-".repeat(Math.max(0, distance - 2))}${genderWord(person, "grandfather", "grandmother", "grandparent")}`;
+  }
+
+  function descendantWord(person, distance) {
+    if (distance === 1) return genderWord(person, "son", "daughter", "child");
+    return `${"great-".repeat(Math.max(0, distance - 2))}${genderWord(person, "grandson", "granddaughter", "grandchild")}`;
+  }
+
+  function genderWord(person, male, female, neutral) {
+    return person.gender === "M" ? male : person.gender === "F" ? female : neutral;
+  }
+
+  function ordinal(number) {
+    const mod100 = number % 100;
+    if (mod100 >= 11 && mod100 <= 13) return `${number}th`;
+    return `${number}${number % 10 === 1 ? "st" : number % 10 === 2 ? "nd" : number % 10 === 3 ? "rd" : "th"}`;
   }
 
   function visibleNodeIds() {
@@ -373,13 +541,13 @@
   function updateLayeredTargets() {
     const generations = d3.group(nodes, (node) => node.generation);
     const maxGeneration = d3.max(nodes, (node) => node.generation) || 0;
-    const rowGap = Math.max(148, Math.min(210, (height() - 190) / Math.max(1, maxGeneration)));
+    const rowGap = Math.max(220, Math.min(270, (height() - 190) / Math.max(1, maxGeneration)));
     const generationNumbers = [...generations.keys()].sort((a, b) => a - b);
 
     generationNumbers.forEach((generation) => {
       const generationNodes = generations.get(generation);
-      const units = generation === 2
-        ? thirdGenerationUnits(generationNodes)
+      const units = generation > 0
+        ? siblingGroupedUnits(generationNodes)
         : displayUnitsForGeneration(generationNodes);
       placeUnits(units, generation, rowGap);
     });
@@ -389,25 +557,52 @@
     const spacing = Math.max(122, Math.min(190, (width() - 180) / Math.max(1, units.length - 1 || 1)));
     const totalWidth = spacing * (units.length - 1);
     const startX = width() / 2 - totalWidth / 2;
+    const ageOffsets = generationAgeOffsets(units);
 
     units.forEach((unit, index) => {
       const centerX = unit.targetX ?? startX + index * spacing;
-      const y = 95 + generation * rowGap;
+      const generationY = 95 + generation * rowGap;
 
       if (unit.length === 1) {
         unit[0].targetX = centerX;
-        unit[0].targetY = y;
+        unit[0].targetY = generationY + ageOffsets.get(unit[0].id);
         return;
       }
 
       unit[0].targetX = centerX - 40;
-      unit[0].targetY = y;
+      unit[0].targetY = generationY + ageOffsets.get(unit[0].id);
       unit[1].targetX = centerX + 40;
-      unit[1].targetY = y;
+      unit[1].targetY = generationY + ageOffsets.get(unit[1].id);
     });
   }
 
-  function thirdGenerationUnits(generationNodes) {
+  function generationAgeOffsets(units) {
+    const generationNodes = units.flat();
+    const datedNodes = generationNodes.filter((node) => Number.isFinite(decimalBirthYear(node)));
+    const middleBirthYear = d3.median(datedNodes, decimalBirthYear);
+    const offsets = new Map();
+
+    generationNodes.forEach((node) => {
+      const year = decimalBirthYear(node);
+      // Seven pixels per year makes sibling age order visible without allowing
+      // any generation to spill into the rows above or below it.
+      offsets.set(node.id, Number.isFinite(year)
+        ? Math.max(-52, Math.min(52, (year - middleBirthYear) * 7))
+        : null);
+    });
+
+    generationNodes.forEach((node) => {
+      if (offsets.get(node.id) !== null) return;
+      const partner = nodeById.get(node.partnerId);
+      offsets.set(node.id, partner && offsets.get(partner.id) !== null
+        ? offsets.get(partner.id)
+        : 0);
+    });
+
+    return offsets;
+  }
+
+  function siblingGroupedUnits(generationNodes) {
     const units = displayUnitsForGeneration(generationNodes);
     const grouped = d3.group(units, parentKeyForUnit);
     const groups = [...grouped.entries()].map(([parentKey, parentUnits]) => {
@@ -560,6 +755,15 @@
   function birthYear(member) {
     const match = String(member.birthDate || "").match(/^(\d{4})/);
     return match ? Number(match[1]) : 9999;
+  }
+
+  function decimalBirthYear(member) {
+    const match = String(member.birthDate || "").match(/^(\d{4})(?:-(\d{2})-(\d{2}))?$/);
+    if (!match) return NaN;
+    const year = Number(match[1]);
+    const month = Number(match[2] || 1);
+    const day = Number(match[3] || 1);
+    return year + (month - 1) / 12 + (day - 1) / 365;
   }
 
   function birthTime(member) {
