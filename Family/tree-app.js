@@ -63,6 +63,9 @@
 
   let selectedId = members.find((member) => member.featured)?.id ?? members[0]?.id;
   let comparisonId = null;
+  let touchRelationSourceId = null;
+  let touchRelationTargetId = null;
+  let suppressClickUntil = 0;
   let searchTerm = "";
   let activeGeneration = "all";
   let searchTimer = null;
@@ -297,6 +300,7 @@
   }
 
   function selectPerson(event, id) {
+    if (Date.now() < suppressClickUntil) return;
     if (event.ctrlKey && id !== selectedId) {
       comparisonId = comparisonId === id ? null : id;
       applyState();
@@ -861,16 +865,53 @@
   }
 
   function dragStarted(event, d) {
+    if (isTouchGesture(event)) {
+      touchRelationSourceId = d.id;
+      touchRelationTargetId = null;
+      selectedId = d.id;
+      comparisonId = null;
+      applyState();
+      return;
+    }
     if (!event.active) simulation.alphaTarget(0.25).restart();
     d.fx = d.x;
   }
 
   function dragged(event, d) {
+    if (touchRelationSourceId !== null) {
+      const point = clientPoint(event.sourceEvent);
+      const element = point ? document.elementFromPoint(point.x, point.y)?.closest(".person-node") : null;
+      const target = element ? d3.select(element).datum() : null;
+      touchRelationTargetId = target && target.id !== touchRelationSourceId ? target.id : null;
+      nodeLayer.selectAll(".person-node").classed("is-relation-target", (node) => node.id === touchRelationTargetId);
+      return;
+    }
     d.fx = event.x;
   }
 
   function dragEnded(event, d) {
+    if (touchRelationSourceId !== null) {
+      if (touchRelationTargetId !== null) comparisonId = touchRelationTargetId;
+      touchRelationSourceId = null;
+      touchRelationTargetId = null;
+      suppressClickUntil = Date.now() + 450;
+      nodeLayer.selectAll(".person-node").classed("is-relation-target", false);
+      applyState();
+      return;
+    }
     if (!event.active) simulation.alphaTarget(0);
     d.fx = event.x;
+  }
+
+  function isTouchGesture(event) {
+    const source = event.sourceEvent;
+    return source?.pointerType === "touch" || Boolean(source?.touches || source?.changedTouches);
+  }
+
+  function clientPoint(event) {
+    const touch = event?.touches?.[0] || event?.changedTouches?.[0];
+    if (touch) return { x: touch.clientX, y: touch.clientY };
+    if (Number.isFinite(event?.clientX)) return { x: event.clientX, y: event.clientY };
+    return null;
   }
 })();

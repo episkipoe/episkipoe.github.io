@@ -376,6 +376,12 @@
       filter: drop-shadow(0 0 0 rgba(187, 138, 29, 0.45)) drop-shadow(0 14px 18px rgba(187, 138, 29, 0.24));
     }
 
+    .person-node.is-relation-target .avatar {
+      stroke: var(--accent-2);
+      stroke-width: 6;
+      filter: drop-shadow(0 0 10px rgba(196, 91, 72, 0.48));
+    }
+
     .person-node.is-match .node-label {
       font-size: 0.86rem;
       font-weight: 850;
@@ -415,7 +421,7 @@
       <a class="nav" href="index.html">Back to Family</a>
       <header>
         <h1>Family Tree</h1>
-        <p class="intro">Explore the Bennett and Reynolds branches. Drag people, zoom the canvas, search by name, and select someone to trace their closest connections.</p>
+        <p class="intro">Explore the Bennett and Reynolds branches. Ctrl-click two people to compare them; on mobile, touch one person and drag to another.</p>
       </header>
 
       <section class="controls" aria-label="Tree filters">
