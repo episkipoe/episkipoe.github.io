@@ -61,7 +61,10 @@
     viewport.attr("transform", event.transform);
   });
 
-  let selectedId = members.find((member) => member.featured)?.id ?? members[0]?.id;
+  const requestedSelectedId = Number(new URLSearchParams(window.location.search).get("id"));
+  let selectedId = nodeById.has(requestedSelectedId)
+    ? requestedSelectedId
+    : members.find((member) => member.featured)?.id ?? members[0]?.id;
   let comparisonId = null;
   let touchRelationSourceId = null;
   let touchRelationTargetId = null;
@@ -89,7 +92,7 @@
   hydrateControls();
   resize();
   render();
-  updateSelection(selectedId, { center: false });
+  updateSelection(selectedId, { center: nodeById.has(requestedSelectedId), scale: 1.34 });
   window.addEventListener("resize", resize);
 
   function hydrateControls() {
@@ -197,7 +200,7 @@
 
     node.append("title").text((d) => d.name);
     applyState();
-    setTimeout(fitToView, 250);
+    if (!nodeById.has(requestedSelectedId)) setTimeout(fitToView, 250);
   }
 
   function ticked() {
@@ -293,6 +296,7 @@
         <div><dt>Partner link</dt><dd>${personLinks(partners, "Not listed")}</dd></div>
         <div><dt>Children</dt><dd>${personLinks(children, "None listed")}</dd></div>
       </dl>
+      <a class="related-link" href="related.html?id=${member.id}">View all relationships</a>
     `;
 
     applyState();
