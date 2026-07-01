@@ -38,9 +38,7 @@
     }
 
     button,
-    input,
-    textarea,
-    select {
+    input {
       font: inherit;
     }
 
@@ -140,20 +138,13 @@
       font-weight: 800;
     }
 
-    input,
-    textarea,
-    select {
+    input {
       width: 100%;
       border: 2px solid #b98a53;
       border-radius: 8px;
       padding: 11px 12px;
       background: #fffdf5;
       color: var(--ink);
-    }
-
-    textarea {
-      min-height: 86px;
-      resize: vertical;
     }
 
     .selected-move {
@@ -174,6 +165,10 @@
       color: #523623;
       font-size: 1.08rem;
       line-height: 1.45;
+    }
+
+    .selected-move .tag-row {
+      margin-bottom: 10px;
     }
 
     .character-badge {
@@ -231,10 +226,6 @@
 
     .btn.success {
       background: var(--green);
-    }
-
-    .btn.full {
-      width: 100%;
     }
 
     .character-grid,
@@ -298,11 +289,16 @@
 
     .move-card {
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto auto 1fr;
       gap: 10px;
       min-height: 176px;
       padding: 15px;
       text-align: left;
+    }
+
+    .move-card:disabled {
+      cursor: not-allowed;
+      opacity: 0.68;
     }
 
     .move-card[aria-pressed="true"] {
@@ -323,6 +319,12 @@
       line-height: 1.42;
     }
 
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
     .pill {
       width: fit-content;
       border-radius: 999px;
@@ -336,14 +338,32 @@
       text-transform: uppercase;
     }
 
-    .pill.custom {
+    .pill.bard {
       background: var(--purple);
     }
 
-    .custom-form {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
+    .pill.cleric {
+      background: var(--green);
+    }
+
+    .pill.rogue {
+      background: var(--blue);
+    }
+
+    .pill.warrior {
+      background: var(--red);
+    }
+
+    .pill.wizard {
+      background: var(--purple);
+    }
+
+    .pill.limit {
+      background: #6f4b2c;
+    }
+
+    .pill.locked {
+      background: #7a756d;
     }
 
     .xp-ledger {
@@ -412,6 +432,7 @@
   <main class="page-shell">
     <header class="hero">
       <p class="eyebrow">Heroes of Barcadia helper</p>
+      <h1>Signature Move Chooser</h1>
       <p class="subtitle">Pick a tavern-tested trick, choose your adventurer, and record the glorious, soggy outcome.</p>
     </header>
 
@@ -425,6 +446,7 @@
           <section aria-labelledby="currentMoveTitle">
             <div class="selected-move">
               <h2 id="currentMoveTitle">No move chosen</h2>
+              <div class="tag-row" id="currentMoveTags"></div>
               <p id="currentMoveText">Choose a signature move from the list or let fate roll the barrel.</p>
             </div>
             <div class="character-badge">
@@ -461,132 +483,22 @@
           <span class="meta" id="moveCount"></span>
         </div>
         <div class="move-list" id="moveList"></div>
-
-        <section aria-labelledby="customMoveTitle">
-          <h2 class="section-title" id="customMoveTitle">Add a custom move</h2>
-          <form class="custom-form" id="customMoveForm">
-            <label for="customMoveName">Move name
-              <input id="customMoveName" maxlength="60" required placeholder="e.g. Mugshot Mirage">
-            </label>
-            <label for="customMoveText">Move effect
-              <textarea id="customMoveText" maxlength="180" required placeholder="Describe the mischief in one short rule."></textarea>
-            </label>
-            <button class="btn full" type="submit">Add custom move</button>
-          </form>
-        </section>
       </section>
     </div>
 
     <a class="utility-link" href="../index.html">Back to Dave Stuff</a>
   </main>
 
+  <script src="barcadia-moves-data.js"></script>
   <script>
     const storageKeys = {
       playerName: "barcadia.playerName",
       selectedMoveId: "barcadia.selectedMoveId",
       selectedCharacterId: "barcadia.selectedCharacterId",
-      customMoves: "barcadia.customMoves",
       outcomes: "barcadia.outcomes"
     };
 
-    const officialMoves = [
-      {
-        id: "liquid-courage",
-        name: "Liquid Courage",
-        effect: "Before rolling, take 5 damage to gain +4 to the roll.",
-        source: "Official"
-      },
-      {
-        id: "hair-of-the-dog",
-        name: "Hair of the Dog",
-        effect: "Restore 5 HP to yourself or another player.",
-        source: "Official"
-      },
-      {
-        id: "pocket-sand",
-        name: "Pocket Sand",
-        effect: "Once per turn, reduce a monster's difficulty by 2.",
-        source: "Official"
-      },
-      {
-        id: "misdirection",
-        name: "Misdirection",
-        effect: "Swap places with another player.",
-        source: "Official"
-      },
-      {
-        id: "power-ballad",
-        name: "Power Ballad",
-        effect: "Another player gets +3 on their next roll.",
-        source: "Official"
-      },
-      {
-        id: "loot-goblin",
-        name: "Loot Goblin",
-        effect: "When another player gains loot, draw a card on a roll of 15+.",
-        source: "Custom"
-      },
-      {
-        id: "lucky-escape",
-        name: "Lucky Escape",
-        effect: "The first failed combat each round may be rerolled.",
-        source: "Custom"
-      },
-      {
-        id: "arcane-chug",
-        name: "Arcane Chug",
-        effect: "Convert 10 HP damage to automatic success on a hidden room.",
-        source: "Custom"
-      },
-      {
-        id: "divination",
-        name: "Divination",
-        effect: "Peek at a hidden room before revealing it.",
-        source: "Custom"
-      },
-      {
-        id: "resurrection-insurance",
-        name: "Resurrection Insurance",
-        effect: "Once per game, keep a Power-Up when you die.",
-        source: "Custom"
-      },
-      {
-        id: "power-ballad-house",
-        name: "Power Ballad",
-        effect: "Everyone chooses: drink 5 HP or give you a loot card.",
-        source: "Custom"
-      },
-      {
-        id: "inspiring-chorus",
-        name: "Inspiring Chorus",
-        effect: "All players within two rooms gain +2 on their next roll.",
-        source: "Custom"
-      },
-      {
-        id: "round-for-the-house",
-        name: "Round for the House",
-        effect: "Everyone heals 5 HP.",
-        source: "Custom"
-      },
-      {
-        id: "shots-shots-shots",
-        name: "Shots! Shots! Shots!",
-        effect: "Everyone takes 5 damage, including you.",
-        source: "Custom"
-      },
-      {
-        id: "barrel-roll",
-        name: "Barrel Roll",
-        effect: "Move one extra room after escaping combat, then lose 5 HP if you enter a trap.",
-        source: "Custom"
-      },
-      {
-        id: "mug-of-many-things",
-        name: "Mug of Many Things",
-        effect: "Before opening loot, name a card type. If right, draw one extra card.",
-        source: "Custom"
-      }
-    ];
+    const moves = window.barcadiaMoves || [];
 
     const characters = [
       { id: "merlo", name: "Merlo", title: "the Saucerer", color: "#f0c83a" },
@@ -601,21 +513,18 @@
       playerName: localStorage.getItem(storageKeys.playerName) || "",
       selectedMoveId: localStorage.getItem(storageKeys.selectedMoveId) || "",
       selectedCharacterId: localStorage.getItem(storageKeys.selectedCharacterId) || "",
-      customMoves: readJson(storageKeys.customMoves, []),
       outcomes: readJson(storageKeys.outcomes, [])
     };
 
     const playerNameInput = document.querySelector("#playerName");
     const currentMoveTitle = document.querySelector("#currentMoveTitle");
+    const currentMoveTags = document.querySelector("#currentMoveTags");
     const currentMoveText = document.querySelector("#currentMoveText");
     const moveList = document.querySelector("#moveList");
     const moveCount = document.querySelector("#moveCount");
     const characterGrid = document.querySelector("#characterGrid");
     const characterSwatch = document.querySelector("#characterSwatch");
     const characterSummary = document.querySelector("#characterSummary");
-    const customMoveForm = document.querySelector("#customMoveForm");
-    const customMoveName = document.querySelector("#customMoveName");
-    const customMoveText = document.querySelector("#customMoveText");
     const xpTotal = document.querySelector("#xpTotal");
     const xpLedger = document.querySelector("#xpLedger");
 
@@ -630,31 +539,6 @@
     document.querySelectorAll("[data-xp]").forEach((button) => {
       button.addEventListener("click", () => recordOutcome(button.dataset.label, Number(button.dataset.xp)));
     });
-
-    customMoveForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const name = customMoveName.value.trim();
-      const effect = customMoveText.value.trim();
-
-      if (!name || !effect) {
-        return;
-      }
-
-      state.customMoves.push({
-        id: `custom-${Date.now()}`,
-        name,
-        effect,
-        source: "Custom"
-      });
-
-      localStorage.setItem(storageKeys.customMoves, JSON.stringify(state.customMoves));
-      customMoveForm.reset();
-      render();
-    });
-
-    function getAllMoves() {
-      return [...officialMoves, ...state.customMoves];
-    }
 
     function readJson(key, fallback) {
       try {
@@ -677,8 +561,8 @@
     }
 
     function chooseRandomMove() {
-      const moves = getAllMoves();
-      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      const unlockedMoves = moves.filter((move) => isMoveUnlocked(move));
+      const randomMove = unlockedMoves[Math.floor(Math.random() * unlockedMoves.length)];
       selectMove(randomMove.id);
     }
 
@@ -700,26 +584,37 @@
     }
 
     function renderMoves() {
-      const moves = getAllMoves();
-      moveCount.textContent = `${moves.length} moves in the tavern book`;
+      const currentXp = getCurrentXp();
+      const unlockedCount = moves.filter((move) => isMoveUnlocked(move)).length;
+      moveCount.textContent = `${unlockedCount} of ${moves.length} moves unlocked`;
       moveList.innerHTML = "";
 
       moves.forEach((move) => {
+        const isUnlocked = currentXp >= move.xpRequired;
         const card = document.createElement("button");
-        const source = document.createElement("span");
+        const tags = document.createElement("div");
+        const classTag = createTag(move.characterClass);
+        const levelTag = createTag(`${move.level} (${move.xpRequired} XP)`);
+        const limitTag = createTag(move.limit, "limit");
         const title = document.createElement("h3");
         const effect = document.createElement("p");
 
         card.className = "move-card";
         card.type = "button";
+        card.disabled = !isUnlocked;
         card.setAttribute("aria-pressed", String(move.id === state.selectedMoveId));
+        card.setAttribute("aria-label", getMoveLabel(move, isUnlocked));
 
-        source.className = `pill ${move.source === "Custom" ? "custom" : ""}`;
-        source.textContent = move.source;
+        tags.className = "tag-row";
+        classTag.classList.add(move.characterClass.toLowerCase());
+        if (!isUnlocked) {
+          tags.append(createTag(`Locked: ${move.xpRequired} XP`, "locked"));
+        }
+        tags.append(classTag, levelTag, limitTag);
         title.textContent = move.name;
         effect.textContent = move.effect;
 
-        card.append(source, title, effect);
+        card.append(tags, title, effect);
         card.addEventListener("click", () => selectMove(move.id));
         moveList.append(card);
       });
@@ -755,7 +650,8 @@
     }
 
     function renderSelectedMove() {
-      const selectedMove = getAllMoves().find((move) => move.id === state.selectedMoveId);
+      const selectedMove = moves.find((move) => move.id === state.selectedMoveId);
+      currentMoveTags.innerHTML = "";
 
       if (!selectedMove) {
         currentMoveTitle.textContent = "No move chosen";
@@ -765,6 +661,11 @@
 
       currentMoveTitle.textContent = selectedMove.name;
       currentMoveText.textContent = selectedMove.effect;
+      currentMoveTags.append(
+        createTag(selectedMove.characterClass, selectedMove.characterClass.toLowerCase()),
+        createTag(`${selectedMove.level} (${selectedMove.xpRequired} XP)`),
+        createTag(selectedMove.limit, "limit")
+      );
     }
 
     function renderCharacterSummary() {
@@ -781,8 +682,8 @@
     }
 
     function renderOutcomes() {
-      const total = state.outcomes.reduce((sum, outcome) => sum + outcome.xp, 0);
-      xpTotal.textContent = `XP: ${total}`;
+      const total = getCurrentXp();
+      xpTotal.textContent = `XP: ${total} | Level: ${getLevelName(total)}`;
       xpLedger.innerHTML = "";
 
       state.outcomes.forEach((outcome) => {
@@ -798,7 +699,53 @@
       });
     }
 
+    function getCurrentXp() {
+      return state.outcomes.reduce((sum, outcome) => sum + outcome.xp, 0);
+    }
+
+    function isMoveUnlocked(move) {
+      return getCurrentXp() >= move.xpRequired;
+    }
+
+    function ensureSelectedMoveIsUnlocked() {
+      const selectedMove = moves.find((move) => move.id === state.selectedMoveId);
+
+      if (!selectedMove || !isMoveUnlocked(selectedMove)) {
+        state.selectedMoveId = "";
+        localStorage.removeItem(storageKeys.selectedMoveId);
+      }
+    }
+
+    function getLevelName(xp) {
+      if (xp >= 16) {
+        return "Master";
+      }
+
+      if (xp >= 10) {
+        return "Veteran";
+      }
+
+      if (xp >= 5) {
+        return "Adept";
+      }
+
+      return "Novice";
+    }
+
+    function createTag(text, modifier = "") {
+      const tag = document.createElement("span");
+      tag.className = modifier ? `pill ${modifier}` : "pill";
+      tag.textContent = text;
+      return tag;
+    }
+
+    function getMoveLabel(move, isUnlocked) {
+      const status = isUnlocked ? "Unlocked" : `Locked until ${move.xpRequired} XP`;
+      return `${move.name}. ${move.characterClass}. ${move.level}. ${move.limit}. ${status}. ${move.effect}`;
+    }
+
     function render() {
+      ensureSelectedMoveIsUnlocked();
       renderSelectedMove();
       renderCharacterSummary();
       renderCharacters();
