@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <title>Signature Move Chooser</title>
+  <style>
+    :root {
+      --ink: #261a12;
+      --muted: #725c4b;
+      --paper: #fff9eb;
+      --panel: #f6e4c4;
+      --panel-strong: #e9c980;
+      --line: #8d6135;
+      --coal: #19120f;
+      --gold: #d69b26;
+      --green: #2f7d55;
+      --red: #b34536;
+      --blue: #2f6d9d;
+      --purple: #754a9f;
+      --shadow: rgba(38, 26, 18, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(214, 155, 38, 0.35), transparent 22rem),
+        radial-gradient(circle at 88% 12%, rgba(117, 74, 159, 0.25), transparent 20rem),
+        linear-gradient(135deg, #20130f 0%, #4d2818 44%, #1b1517 100%);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page-shell {
+      width: min(1120px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 26px 0 42px;
+    }
+
+    .hero {
+      color: #fff8e9;
+      padding: 18px 0 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: #f6d58c;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: clamp(2.1rem, 10vw, 4.8rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+      text-shadow: 0 4px 0 rgba(0, 0, 0, 0.28);
+    }
+
+    .subtitle {
+      max-width: 720px;
+      margin-bottom: 0;
+      color: #ffe4b0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.35fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel,
+    .move-card {
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 16px 34px var(--shadow);
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .selected-panel {
+      position: sticky;
+      top: 16px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.44), transparent 56%),
+        var(--panel);
+    }
+
+    .section-title {
+      margin-bottom: 12px;
+      font-size: 1.32rem;
+      line-height: 1.15;
+    }
+
+    .field-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.92rem;
+      font-weight: 800;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 2px solid #b98a53;
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #fffdf5;
+      color: var(--ink);
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .selected-move {
+      border: 2px dashed #8c5b28;
+      border-radius: 8px;
+      padding: 15px;
+      background: #fff5d9;
+    }
+
+    .selected-move h2 {
+      margin-bottom: 8px;
+      font-size: clamp(1.7rem, 7vw, 2.7rem);
+      line-height: 1;
+    }
+
+    .selected-move p {
+      margin-bottom: 0;
+      color: #523623;
+      font-size: 1.08rem;
+      line-height: 1.45;
+    }
+
+    .character-badge {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 14px 0;
+      color: var(--muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 800;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      border: 2px solid rgba(38, 26, 18, 0.45);
+      border-radius: 50%;
+      background: var(--character-color, var(--gold));
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      min-height: 44px;
+      border: 2px solid #4d2e19;
+      border-radius: 8px;
+      padding: 10px 13px;
+      background: var(--coal);
+      color: #fff8e9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 850;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.28);
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      transform: translateY(-1px);
+      outline: 3px solid rgba(214, 155, 38, 0.44);
+    }
+
+    .btn.secondary {
+      background: #fff8e9;
+      color: #3b2417;
+    }
+
+    .btn.danger {
+      background: var(--red);
+    }
+
+    .btn.success {
+      background: var(--green);
+    }
+
+    .btn.full {
+      width: 100%;
+    }
+
+    .character-grid,
+    .outcome-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+    }
+
+    .choice-button {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      min-height: 48px;
+      border: 2px solid #b98a53;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fffdf5;
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .choice-button[aria-pressed="true"] {
+      border-color: #2c1a10;
+      background: #ffe9aa;
+      box-shadow: inset 0 0 0 2px rgba(44, 26, 16, 0.18);
+    }
+
+    .character-name {
+      display: block;
+      font-weight: 900;
+    }
+
+    .character-title,
+    .meta,
+    .xp-total {
+      color: var(--muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.86rem;
+    }
+
+    .move-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .move-toolbar h2 {
+      margin-bottom: 0;
+    }
+
+    .move-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+      gap: 12px;
+    }
+
+    .move-card {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      min-height: 176px;
+      padding: 15px;
+      text-align: left;
+    }
+
+    .move-card[aria-pressed="true"] {
+      border-color: #24140d;
+      background: #fff1bd;
+      box-shadow: 0 0 0 3px rgba(214, 155, 38, 0.35), 0 16px 34px var(--shadow);
+    }
+
+    .move-card h3 {
+      margin-bottom: 0;
+      font-size: 1.25rem;
+      line-height: 1.1;
+    }
+
+    .move-card p {
+      margin-bottom: 0;
+      color: #5b402c;
+      line-height: 1.42;
+    }
+
+    .pill {
+      width: fit-content;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #3b2417;
+      color: #fff8e9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.74rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .pill.custom {
+      background: var(--purple);
+    }
+
+    .custom-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .xp-ledger {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .xp-ledger li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(141, 97, 53, 0.32);
+      padding-bottom: 7px;
+      color: #533725;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .utility-link {
+      display: inline-block;
+      margin-top: 18px;
+      color: #ffe4b0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 800;
+    }
+
+    @media (max-width: 840px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .selected-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page-shell {
+        width: min(100vw - 20px, 1120px);
+        padding-top: 14px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .move-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .move-list {
+        grid-template-columns: 1fr;
+      }
+
+      .button-row .btn {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero">
+      <p class="eyebrow">Heroes of Barcadia helper</p>
+      <p class="subtitle">Pick a tavern-tested trick, choose your adventurer, and record the glorious, soggy outcome.</p>
+    </header>
+
+    <div class="app-grid">
+      <aside class="panel selected-panel" aria-label="Current adventurer">
+        <div class="field-stack">
+          <label for="playerName">Player name
+            <input id="playerName" autocomplete="name" placeholder="Name your thirsty hero">
+          </label>
+
+          <section aria-labelledby="currentMoveTitle">
+            <div class="selected-move">
+              <h2 id="currentMoveTitle">No move chosen</h2>
+              <p id="currentMoveText">Choose a signature move from the list or let fate roll the barrel.</p>
+            </div>
+            <div class="character-badge">
+              <span class="swatch" id="characterSwatch" aria-hidden="true"></span>
+              <span id="characterSummary">No character selected</span>
+            </div>
+            <div class="button-row">
+              <button class="btn" id="randomMoveButton" type="button">Random move</button>
+              <button class="btn danger" id="clearSelectionButton" type="button">Clear selection</button>
+            </div>
+          </section>
+
+          <section aria-labelledby="characterTitle">
+            <h2 class="section-title" id="characterTitle">Character</h2>
+            <div class="character-grid" id="characterGrid"></div>
+          </section>
+
+          <section aria-labelledby="outcomesTitle">
+            <h2 class="section-title" id="outcomesTitle">Experience</h2>
+            <p class="xp-total" id="xpTotal">XP: 0</p>
+            <div class="outcome-grid">
+              <button class="btn success" data-xp="4" data-label="Claimed the drink horde" type="button">Claimed the drink horde (+4 XP)</button>
+              <button class="btn secondary" data-xp="2" data-label="Survived the dungeon" type="button">Survived the dungeon (+2 XP)</button>
+              <button class="btn danger" data-xp="1" data-label="Died" type="button">Died (+1 XP)</button>
+            </div>
+            <ul class="xp-ledger" id="xpLedger" aria-label="Recent outcomes"></ul>
+          </section>
+        </div>
+      </aside>
+
+      <section class="panel" aria-labelledby="movesTitle">
+        <div class="move-toolbar">
+          <h2 class="section-title" id="movesTitle">Choose one move</h2>
+          <span class="meta" id="moveCount"></span>
+        </div>
+        <div class="move-list" id="moveList"></div>
+
+        <section aria-labelledby="customMoveTitle">
+          <h2 class="section-title" id="customMoveTitle">Add a custom move</h2>
+          <form class="custom-form" id="customMoveForm">
+            <label for="customMoveName">Move name
+              <input id="customMoveName" maxlength="60" required placeholder="e.g. Mugshot Mirage">
+            </label>
+            <label for="customMoveText">Move effect
+              <textarea id="customMoveText" maxlength="180" required placeholder="Describe the mischief in one short rule."></textarea>
+            </label>
+            <button class="btn full" type="submit">Add custom move</button>
+          </form>
+        </section>
+      </section>
+    </div>
+
+    <a class="utility-link" href="index.html">Back to Dave Stuff</a>
+  </main>
+
+  <script>
+    const storageKeys = {
+      playerName: "barcadia.playerName",
+      selectedMoveId: "barcadia.selectedMoveId",
+      selectedCharacterId: "barcadia.selectedCharacterId",
+      customMoves: "barcadia.customMoves",
+      outcomes: "barcadia.outcomes"
+    };
+
+    const officialMoves = [
+      {
+        id: "liquid-courage",
+        name: "Liquid Courage",
+        effect: "Before rolling, take 5 damage to gain +4 to the roll.",
+        source: "Official"
+      },
+      {
+        id: "hair-of-the-dog",
+        name: "Hair of the Dog",
+        effect: "Restore 5 HP to yourself or another player.",
+        source: "Official"
+      },
+      {
+        id: "pocket-sand",
+        name: "Pocket Sand",
+        effect: "Once per turn, reduce a monster's difficulty by 2.",
+        source: "Official"
+      },
+      {
+        id: "misdirection",
+        name: "Misdirection",
+        effect: "Swap places with another player.",
+        source: "Official"
+      },
+      {
+        id: "power-ballad",
+        name: "Power Ballad",
+        effect: "Another player gets +3 on their next roll.",
+        source: "Official"
+      },
+      {
+        id: "loot-goblin",
+        name: "Loot Goblin",
+        effect: "When another player gains loot, draw a card on a roll of 15+.",
+        source: "Custom"
+      },
+      {
+        id: "lucky-escape",
+        name: "Lucky Escape",
+        effect: "The first failed combat each round may be rerolled.",
+        source: "Custom"
+      },
+      {
+        id: "arcane-chug",
+        name: "Arcane Chug",
+        effect: "Convert 10 HP damage to automatic success on a hidden room.",
+        source: "Custom"
+      },
+      {
+        id: "divination",
+        name: "Divination",
+        effect: "Peek at a hidden room before revealing it.",
+        source: "Custom"
+      },
+      {
+        id: "resurrection-insurance",
+        name: "Resurrection Insurance",
+        effect: "Once per game, keep a Power-Up when you die.",
+        source: "Custom"
+      },
+      {
+        id: "power-ballad-house",
+        name: "Power Ballad",
+        effect: "Everyone chooses: drink 5 HP or give you a loot card.",
+        source: "Custom"
+      },
+      {
+        id: "inspiring-chorus",
+        name: "Inspiring Chorus",
+        effect: "All players within two rooms gain +2 on their next roll.",
+        source: "Custom"
+      },
+      {
+        id: "round-for-the-house",
+        name: "Round for the House",
+        effect: "Everyone heals 5 HP.",
+        source: "Custom"
+      },
+      {
+        id: "shots-shots-shots",
+        name: "Shots! Shots! Shots!",
+        effect: "Everyone takes 5 damage, including you.",
+        source: "Custom"
+      },
+      {
+        id: "barrel-roll",
+        name: "Barrel Roll",
+        effect: "Move one extra room after escaping combat, then lose 5 HP if you enter a trap.",
+        source: "Custom"
+      },
+      {
+        id: "mug-of-many-things",
+        name: "Mug of Many Things",
+        effect: "Before opening loot, name a card type. If right, draw one extra card.",
+        source: "Custom"
+      }
+    ];
+
+    const characters = [
+      { id: "merlo", name: "Merlo", title: "the Saucerer", color: "#f0c83a" },
+      { id: "absinthia", name: "Absinthia", title: "of Wormword", color: "#97d93f" },
+      { id: "intoxica", name: "Intoxica", title: "the Necromixer", color: "#9151bd" },
+      { id: "flaskian", name: "Flaskian", title: "the Concealed", color: "#3d80c4" },
+      { id: "keggar", name: "Keggar", title: "the Barbeerian", color: "#c7463c" },
+      { id: "sir-drankalot", name: "Sir Drankalot", title: "the Inebriated", color: "#e4812c" }
+    ];
+
+    const state = {
+      playerName: localStorage.getItem(storageKeys.playerName) || "",
+      selectedMoveId: localStorage.getItem(storageKeys.selectedMoveId) || "",
+      selectedCharacterId: localStorage.getItem(storageKeys.selectedCharacterId) || "",
+      customMoves: readJson(storageKeys.customMoves, []),
+      outcomes: readJson(storageKeys.outcomes, [])
+    };
+
+    const playerNameInput = document.querySelector("#playerName");
+    const currentMoveTitle = document.querySelector("#currentMoveTitle");
+    const currentMoveText = document.querySelector("#currentMoveText");
+    const moveList = document.querySelector("#moveList");
+    const moveCount = document.querySelector("#moveCount");
+    const characterGrid = document.querySelector("#characterGrid");
+    const characterSwatch = document.querySelector("#characterSwatch");
+    const characterSummary = document.querySelector("#characterSummary");
+    const customMoveForm = document.querySelector("#customMoveForm");
+    const customMoveName = document.querySelector("#customMoveName");
+    const customMoveText = document.querySelector("#customMoveText");
+    const xpTotal = document.querySelector("#xpTotal");
+    const xpLedger = document.querySelector("#xpLedger");
+
+    playerNameInput.value = state.playerName;
+    playerNameInput.addEventListener("input", () => {
+      state.playerName = playerNameInput.value.trim();
+      localStorage.setItem(storageKeys.playerName, state.playerName);
+    });
+
+    document.querySelector("#randomMoveButton").addEventListener("click", chooseRandomMove);
+    document.querySelector("#clearSelectionButton").addEventListener("click", clearSelection);
+    document.querySelectorAll("[data-xp]").forEach((button) => {
+      button.addEventListener("click", () => recordOutcome(button.dataset.label, Number(button.dataset.xp)));
+    });
+
+    customMoveForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const name = customMoveName.value.trim();
+      const effect = customMoveText.value.trim();
+
+      if (!name || !effect) {
+        return;
+      }
+
+      state.customMoves.push({
+        id: `custom-${Date.now()}`,
+        name,
+        effect,
+        source: "Custom"
+      });
+
+      localStorage.setItem(storageKeys.customMoves, JSON.stringify(state.customMoves));
+      customMoveForm.reset();
+      render();
+    });
+
+    function getAllMoves() {
+      return [...officialMoves, ...state.customMoves];
+    }
+
+    function readJson(key, fallback) {
+      try {
+        return JSON.parse(localStorage.getItem(key)) || fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function selectMove(moveId) {
+      state.selectedMoveId = moveId;
+      localStorage.setItem(storageKeys.selectedMoveId, moveId);
+      render();
+    }
+
+    function selectCharacter(characterId) {
+      state.selectedCharacterId = characterId;
+      localStorage.setItem(storageKeys.selectedCharacterId, characterId);
+      render();
+    }
+
+    function chooseRandomMove() {
+      const moves = getAllMoves();
+      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      selectMove(randomMove.id);
+    }
+
+    function clearSelection() {
+      state.selectedMoveId = "";
+      localStorage.removeItem(storageKeys.selectedMoveId);
+      render();
+    }
+
+    function recordOutcome(label, xp) {
+      state.outcomes.unshift({
+        label,
+        xp,
+        at: new Date().toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+      });
+      state.outcomes = state.outcomes.slice(0, 8);
+      localStorage.setItem(storageKeys.outcomes, JSON.stringify(state.outcomes));
+      renderOutcomes();
+    }
+
+    function renderMoves() {
+      const moves = getAllMoves();
+      moveCount.textContent = `${moves.length} moves in the tavern book`;
+      moveList.innerHTML = "";
+
+      moves.forEach((move) => {
+        const card = document.createElement("button");
+        const source = document.createElement("span");
+        const title = document.createElement("h3");
+        const effect = document.createElement("p");
+
+        card.className = "move-card";
+        card.type = "button";
+        card.setAttribute("aria-pressed", String(move.id === state.selectedMoveId));
+
+        source.className = `pill ${move.source === "Custom" ? "custom" : ""}`;
+        source.textContent = move.source;
+        title.textContent = move.name;
+        effect.textContent = move.effect;
+
+        card.append(source, title, effect);
+        card.addEventListener("click", () => selectMove(move.id));
+        moveList.append(card);
+      });
+    }
+
+    function renderCharacters() {
+      characterGrid.innerHTML = "";
+
+      characters.forEach((character) => {
+        const button = document.createElement("button");
+        const swatch = document.createElement("span");
+        const text = document.createElement("span");
+        const name = document.createElement("span");
+        const title = document.createElement("span");
+
+        button.className = "choice-button";
+        button.type = "button";
+        button.setAttribute("aria-pressed", String(character.id === state.selectedCharacterId));
+
+        swatch.className = "swatch";
+        swatch.style.setProperty("--character-color", character.color);
+        swatch.setAttribute("aria-hidden", "true");
+        name.className = "character-name";
+        name.textContent = character.name;
+        title.className = "character-title";
+        title.textContent = character.title;
+
+        text.append(name, title);
+        button.append(swatch, text);
+        button.addEventListener("click", () => selectCharacter(character.id));
+        characterGrid.append(button);
+      });
+    }
+
+    function renderSelectedMove() {
+      const selectedMove = getAllMoves().find((move) => move.id === state.selectedMoveId);
+
+      if (!selectedMove) {
+        currentMoveTitle.textContent = "No move chosen";
+        currentMoveText.textContent = "Choose a signature move from the list or let fate roll the barrel.";
+        return;
+      }
+
+      currentMoveTitle.textContent = selectedMove.name;
+      currentMoveText.textContent = selectedMove.effect;
+    }
+
+    function renderCharacterSummary() {
+      const character = characters.find((item) => item.id === state.selectedCharacterId);
+
+      if (!character) {
+        characterSummary.textContent = "No character selected";
+        characterSwatch.style.setProperty("--character-color", "var(--gold)");
+        return;
+      }
+
+      characterSummary.textContent = `${character.name}: ${character.title}`;
+      characterSwatch.style.setProperty("--character-color", character.color);
+    }
+
+    function renderOutcomes() {
+      const total = state.outcomes.reduce((sum, outcome) => sum + outcome.xp, 0);
+      xpTotal.textContent = `XP: ${total}`;
+      xpLedger.innerHTML = "";
+
+      state.outcomes.forEach((outcome) => {
+        const item = document.createElement("li");
+        const label = document.createElement("span");
+        const value = document.createElement("strong");
+
+        label.textContent = outcome.label;
+        value.textContent = `+${outcome.xp} XP`;
+        item.title = outcome.at;
+        item.append(label, value);
+        xpLedger.append(item);
+      });
+    }
+
+    function render() {
+      renderSelectedMove();
+      renderCharacterSummary();
+      renderCharacters();
+      renderMoves();
+      renderOutcomes();
+    }
+
+    render();
+  </script>
+</body>
+</html>
