@@ -14,6 +14,10 @@
   const summary = document.querySelector("#summary");
   const list = document.querySelector("#relationship-list");
   const search = document.querySelector("#relationship-search");
+  const sortNameButton = document.querySelector("#sort-name");
+  const sortRelationshipButton = document.querySelector("#sort-relationship");
+  let sortMode = "generation";
+  let nameSortDirection = "asc";
 
   if (!person) {
     list.innerHTML = '<p class="empty">No family data is available.</p>';
@@ -26,15 +30,75 @@
   const relationships = people
     .filter((candidate) => candidate.id !== person.id)
     .map((candidate) => ({ person: candidate, relation: relationshipTo(candidate, person) }))
-    .filter((item) => item.relation)
-    .sort((a, b) => a.relation.localeCompare(b.relation) || a.person.name.localeCompare(b.person.name));
+    .filter((item) => item.relation);
+  const proximityById = proximityDistances(person.id);
 
   summary.textContent = `${relationships.length} known relationships. Each label describes how that person is related to ${person.name}.`;
-  render(relationships);
-  search.addEventListener("input", () => {
-    const term = search.value.trim().toLowerCase();
-    render(relationships.filter((item) => `${item.person.name} ${item.relation}`.toLowerCase().includes(term)));
+  updateSortButtons();
+  renderFiltered();
+  search.addEventListener("input", renderFiltered);
+  sortNameButton.addEventListener("click", () => {
+    nameSortDirection = sortMode === "name" && nameSortDirection === "asc" ? "desc" : "asc";
+    sortMode = "name";
+    updateSortButtons();
+    renderFiltered();
   });
+  sortRelationshipButton.addEventListener("click", () => {
+    sortMode = sortMode === "proximity" ? "generation" : "proximity";
+    updateSortButtons();
+    renderFiltered();
+  });
+
+  function renderFiltered() {
+    const term = search.value.trim().toLowerCase();
+    const items = relationships.filter((item) => `${item.person.name} ${item.relation}`.toLowerCase().includes(term));
+    render(sortRelationships(items));
+  }
+
+  function sortRelationships(items) {
+    return [...items].sort((a, b) => {
+      if (sortMode === "name") {
+        return nameSortDirectionMultiplier() * a.person.name.localeCompare(b.person.name)
+          || generationCompare(a, b);
+      }
+      if (sortMode === "proximity") return proximityCompare(a, b);
+      return generationCompare(a, b);
+    });
+  }
+
+  function generationCompare(a, b) {
+    return generationFor(a.person) - generationFor(b.person)
+      || birthTime(a.person) - birthTime(b.person)
+      || a.person.name.localeCompare(b.person.name);
+  }
+
+  function nameSortDirectionMultiplier() {
+    return nameSortDirection === "asc" ? 1 : -1;
+  }
+
+  function proximityCompare(a, b) {
+    return proximityFor(a.person.id) - proximityFor(b.person.id)
+      || generationCompare(a, b);
+  }
+
+  function proximityFor(id) {
+    return proximityById.get(id) ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  function updateSortButtons() {
+    sortNameButton.textContent = sortMode === "name"
+      ? `Name ${nameSortDirection === "asc" ? "A-Z" : "Z-A"}`
+      : "Name";
+    sortNameButton.setAttribute("aria-sort", sortMode === "name"
+      ? (nameSortDirection === "asc" ? "ascending" : "descending")
+      : "none");
+    sortRelationshipButton.textContent = sortMode === "proximity"
+      ? "Relationship Proximity"
+      : "Relationship Generation";
+    sortRelationshipButton.setAttribute("aria-sort", sortMode === "proximity" || sortMode === "generation"
+      ? "ascending"
+      : "none");
+  }
 
   function render(items) {
     list.innerHTML = items.length ? items.map((item) => `
@@ -116,6 +180,31 @@
     return ids;
   }
 
+  function proximityDistances(startId) {
+    const distances = new Map([[startId, 0]]);
+    const queue = [startId];
+    while (queue.length) {
+      const id = queue.shift();
+      const nextDistance = distances.get(id) + 1;
+      relatedIds(id).forEach((relatedId) => {
+        if (distances.has(relatedId)) return;
+        distances.set(relatedId, nextDistance);
+        queue.push(relatedId);
+      });
+    }
+    return distances;
+  }
+
+  function relatedIds(id) {
+    const member = byId.get(id);
+    if (!member) return [];
+    const ids = new Set([...parentIds(member), ...partnerIds(id)]);
+    people.forEach((candidate) => {
+      if (candidate.parent1Id === id || candidate.parent2Id === id) ids.add(candidate.id);
+    });
+    return [...ids];
+  }
+
   function addPair(first, second) {
     if (!byId.has(first) || !byId.has(second) || first === second) return;
     const pair = [first, second].sort((a, b) => a - b);
@@ -124,6 +213,23 @@
 
   function arePartners(first, second) { return partnerPairs.has([first, second].sort((a, b) => a - b).join("-")); }
   function parentIds(member) { return member ? [member.parent1Id, member.parent2Id].filter((id) => byId.has(id)) : []; }
+  function generationFor(member, seen = new Set()) {
+    if (!member || seen.has(member.id)) return 0;
+    seen.add(member.id);
+    const parents = parentIds(member);
+    if (!parents.length) {
+      const partner = byId.get(member.partnerId);
+      const partnerParents = partner ? parentIds(partner) : [];
+      return partnerParents.length ? generationFor(partner, seen) : 0;
+    }
+    return 1 + Math.max(...parents.map((id) => generationFor(byId.get(id), seen)));
+  }
+  function birthTime(member) {
+    const value = String(member.birthDate || "");
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return 99999999;
+    return Number(match[1]) * 10000 + Number(match[2]) * 100 + Number(match[3]);
+  }
   function genderWord(member, male, female, neutral) { return member.gender === "M" ? male : member.gender === "F" ? female : neutral; }
   function ancestorWord(member, distance) { return distance === 1 ? genderWord(member, "father", "mother", "parent") : `${"great-".repeat(distance - 2)}${genderWord(member, "grandfather", "grandmother", "grandparent")}`; }
   function descendantWord(member, distance) { return distance === 1 ? genderWord(member, "son", "daughter", "child") : `${"great-".repeat(distance - 2)}${genderWord(member, "grandson", "granddaughter", "grandchild")}`; }
