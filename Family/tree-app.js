@@ -64,7 +64,7 @@
   const requestedSelectedId = Number(new URLSearchParams(window.location.search).get("id"));
   let selectedId = nodeById.has(requestedSelectedId)
     ? requestedSelectedId
-    : members.find((member) => member.featured)?.id ?? members[0]?.id;
+    : null;
   let comparisonId = null;
   let touchRelationSourceId = null;
   let touchRelationTargetId = null;
@@ -89,10 +89,15 @@
     .on("tick", ticked);
 
   svg.call(zoom);
+  svg.on("click", clearSelectionFromBackground);
   hydrateControls();
   resize();
   render();
-  updateSelection(selectedId, { center: nodeById.has(requestedSelectedId), scale: 1.34 });
+  if (selectedId === null) {
+    clearSelection();
+  } else {
+    updateSelection(selectedId, { center: true, scale: 1.34 });
+  }
   window.addEventListener("resize", resize);
 
   function hydrateControls() {
@@ -122,13 +127,12 @@
       generationFilter.value = "all";
       searchTerm = "";
       activeGeneration = "all";
-      selectedId = members.find((member) => member.featured)?.id ?? members[0]?.id;
       comparisonId = null;
       nodes.forEach((node) => {
         node.fx = null;
         node.fy = null;
       });
-      updateSelection(selectedId, { center: false });
+      clearSelection();
       fitToView();
     });
 
@@ -272,7 +276,13 @@
   function updateSelection(id, options = { center: true }) {
     selectedId = id;
     const member = nodeById.get(id);
+    if (!member) {
+      clearSelection();
+      return;
+    }
+    clearGenerationFilter();
     const parents = parentIds(member);
+    const siblings = siblingIds(member);
     const children = [...(childrenByParent.get(id) || [])].sort((a, b) => {
       return birthTime(memberById.get(a)) - birthTime(memberById.get(b));
     });
@@ -282,6 +292,10 @@
         const partnerId = (link.source.id ?? link.source) === id ? link.target.id ?? link.target : link.source.id ?? link.source;
         return partnerId;
       });
+    const diedDate = formatDate(member.deathDate);
+    const marriedDate = formatDate(member.marriageDate);
+    const diedRow = diedDate ? `<div><dt>Died</dt><dd>${diedDate}</dd></div>` : "";
+    const marriedRow = marriedDate ? `<div><dt>Married</dt><dd>${marriedDate}</dd></div>` : "";
 
     details.innerHTML = `
       <p class="eyebrow">Selected Person</p>
@@ -290,9 +304,10 @@
         <div><dt>Family</dt><dd>${escapeHtml(member.family || "Unknown")}</dd></div>
         <div><dt>Generation</dt><dd>${member.generation + 1}</dd></div>
         <div><dt>Born</dt><dd>${formatDate(member.birthDate) || "Not listed"}</dd></div>
-        <div><dt>Died</dt><dd>${formatDate(member.deathDate) || "Not listed"}</dd></div>
-        <div><dt>Married</dt><dd>${formatDate(member.marriageDate) || "Not listed"}</dd></div>
+        ${diedRow}
+        ${marriedRow}
         <div><dt>Parents</dt><dd>${personLinks(parents, "Not listed")}</dd></div>
+        <div><dt>Siblings</dt><dd>${personLinks(siblings, "None listed")}</dd></div>
         <div><dt>Partner link</dt><dd>${personLinks(partners, "Not listed")}</dd></div>
         <div><dt>Children</dt><dd>${personLinks(children, "None listed")}</dd></div>
       </dl>
@@ -305,6 +320,7 @@
 
   function selectPerson(event, id) {
     if (Date.now() < suppressClickUntil) return;
+    event.stopPropagation();
     if (event.ctrlKey && id !== selectedId) {
       comparisonId = comparisonId === id ? null : id;
       applyState();
@@ -312,6 +328,35 @@
     }
     comparisonId = null;
     updateSelection(id);
+  }
+
+  function clearGenerationFilter() {
+    if (activeGeneration === "all") return;
+    activeGeneration = "all";
+    generationFilter.value = "all";
+  }
+
+  function clearSelectionFromBackground(event) {
+    if (Date.now() < suppressClickUntil || event.defaultPrevented) return;
+    if (event.target.closest(".person-node")) return;
+    clearSelection();
+  }
+
+  function clearSelection() {
+    selectedId = null;
+    comparisonId = null;
+    const generations = new Set(nodes.map((node) => node.generation));
+    const families = new Set(nodes.map((node) => node.family).filter(Boolean));
+    details.innerHTML = `
+      <p class="eyebrow">All People</p>
+      <h2>Family tree</h2>
+      <dl>
+        <div><dt>People</dt><dd>${nodes.length}</dd></div>
+        <div><dt>Families</dt><dd>${families.size}</dd></div>
+        <div><dt>Generations</dt><dd>${generations.size}</dd></div>
+      </dl>
+    `;
+    applyState();
   }
 
   function updateStats(visibleIds) {
@@ -489,6 +534,7 @@
   }
 
   function connectedNodeIds(id) {
+    if (id === null || id === undefined) return new Set(nodes.map((node) => node.id));
     const ids = new Set([id]);
     const member = memberById.get(id);
     if (!member) return ids;
@@ -800,6 +846,16 @@
     return [member.parent1Id, member.parent2Id]
       .filter((id) => id !== null && id !== undefined)
       .filter((id) => memberById.has(id));
+  }
+
+  function siblingIds(member) {
+    const ids = new Set();
+    parentIds(member).forEach((parentId) => {
+      (childrenByParent.get(parentId) || []).forEach((childId) => {
+        if (childId !== member.id) ids.add(childId);
+      });
+    });
+    return [...ids].sort((a, b) => birthTime(memberById.get(a)) - birthTime(memberById.get(b)));
   }
 
   function personLinks(ids, fallback) {
