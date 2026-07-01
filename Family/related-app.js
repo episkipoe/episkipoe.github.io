@@ -166,9 +166,13 @@
     if (/brother|sister|sibling/.test(relation)) return genderWord(subject, "brother-in-law", "sister-in-law", "sibling-in-law");
     if (/father|mother|parent/.test(relation)) return genderWord(subject, "father-in-law", "mother-in-law", "parent-in-law");
     if (/son|daughter|child/.test(relation)) return genderWord(subject, "son-in-law", "daughter-in-law", "child-in-law");
-    if (/uncle|aunt/.test(relation)) return genderWord(subject, "uncle", "aunt", "aunt or uncle");
-    if (/nephew|niece/.test(relation)) return genderWord(subject, "nephew", "niece", "niece or nephew");
+    if (/uncle|aunt/.test(relation)) return generationPrefix(relation) + genderWord(subject, "uncle", "aunt", "aunt or uncle");
+    if (/nephew|niece/.test(relation)) return generationPrefix(relation) + genderWord(subject, "nephew", "niece", "niece or nephew");
     return `${relation} by marriage`;
+  }
+
+  function generationPrefix(relation) {
+    return relation.match(/^(?:great-)+/)?.[0] || "";
   }
 
   function partnerIds(id) {

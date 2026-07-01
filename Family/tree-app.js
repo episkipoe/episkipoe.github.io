@@ -291,11 +291,13 @@
       .map((link) => {
         const partnerId = (link.source.id ?? link.source) === id ? link.target.id ?? link.target : link.source.id ?? link.source;
         return partnerId;
-      });
+    });
+    const bornText = birthDateWithAge(member);
     const diedDate = formatDate(member.deathDate);
     const marriedDate = formatDate(member.marriageDate);
+    const marriedDuration = marriageDuration(member, partners);
     const diedRow = diedDate ? `<div><dt>Died</dt><dd>${diedDate}</dd></div>` : "";
-    const marriedRow = marriedDate ? `<div><dt>Married</dt><dd>${marriedDate}</dd></div>` : "";
+    const marriedRow = marriedDate ? `<div><dt>Married</dt><dd>${marriedDate}${marriedDuration ? ` (${marriedDuration})` : ""}</dd></div>` : "";
 
     details.innerHTML = `
       <p class="eyebrow">Selected Person</p>
@@ -303,7 +305,7 @@
       <dl>
         <div><dt>Family</dt><dd>${escapeHtml(member.family || "Unknown")}</dd></div>
         <div><dt>Generation</dt><dd>${member.generation + 1}</dd></div>
-        <div><dt>Born</dt><dd>${formatDate(member.birthDate) || "Not listed"}</dd></div>
+        <div><dt>Born</dt><dd>${bornText}</dd></div>
         ${diedRow}
         ${marriedRow}
         <div><dt>Parents</dt><dd>${personLinks(parents, "Not listed")}</dd></div>
@@ -459,9 +461,13 @@
     if (/son|daughter|child/.test(relation)) return genderWord(person, "son-in-law", "daughter-in-law", "child-in-law");
     // Everyday kinship treats the spouse of an aunt/uncle as an aunt/uncle,
     // rather than the technically possible but uncommon "aunt/uncle-in-law."
-    if (/uncle|aunt/.test(relation)) return genderWord(person, "uncle", "aunt", "aunt or uncle");
-    if (/nephew|niece/.test(relation)) return genderWord(person, "nephew", "niece", "niece or nephew");
+    if (/uncle|aunt/.test(relation)) return generationPrefix(relation) + genderWord(person, "uncle", "aunt", "aunt or uncle");
+    if (/nephew|niece/.test(relation)) return generationPrefix(relation) + genderWord(person, "nephew", "niece", "niece or nephew");
     return `${relation} by marriage`;
+  }
+
+  function generationPrefix(relation) {
+    return relation.match(/^(?:great-)+/)?.[0] || "";
   }
 
   function ancestorDistances(id) {
@@ -900,6 +906,58 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     const [year, month, day] = value.split("-");
     return `${Number(month)}/${Number(day)}/${year}`;
+  }
+
+  function birthDateWithAge(member) {
+    const formattedDate = formatDate(member.birthDate);
+    if (!formattedDate) return "Not listed";
+    const age = ageFromBirthDate(member.birthDate, member.deathDate);
+    return age === null ? formattedDate : `${formattedDate} (age ${age})`;
+  }
+
+  function ageFromBirthDate(birthDate, deathDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birthDate || ""))) return null;
+    const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(deathDate || ""))
+      ? dateFromParts(deathDate)
+      : new Date();
+    const birth = dateFromParts(birthDate);
+    let age = endDate.getFullYear() - birth.getFullYear();
+    const hadBirthday = endDate.getMonth() > birth.getMonth()
+      || (endDate.getMonth() === birth.getMonth() && endDate.getDate() >= birth.getDate());
+    if (!hadBirthday) age -= 1;
+    return Math.max(0, age);
+  }
+
+  function marriageDuration(member, partnerIds) {
+    if (!partnerIds.length || !/^\d{4}-\d{2}-\d{2}$/.test(String(member.marriageDate || ""))) return "";
+    const partnerDeathDates = partnerIds
+      .map((id) => memberById.get(id)?.deathDate)
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(String(date || "")));
+    const deathDates = [member.deathDate, ...partnerDeathDates]
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(String(date || "")))
+      .sort();
+    const endDate = deathDates.length ? dateFromParts(deathDates[0]) : new Date();
+    return durationText(dateFromParts(member.marriageDate), endDate);
+  }
+
+  function durationText(startDate, endDate) {
+    let years = endDate.getFullYear() - startDate.getFullYear();
+    let months = endDate.getMonth() - startDate.getMonth();
+    if (endDate.getDate() < startDate.getDate()) months -= 1;
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    if (years <= 0 && months <= 0) return "less than 1 month";
+    const parts = [];
+    if (years > 0) parts.push(`${years} ${years === 1 ? "year" : "years"}`);
+    if (months > 0) parts.push(`${months} ${months === 1 ? "month" : "months"}`);
+    return parts.join(", ");
+  }
+
+  function dateFromParts(value) {
+    const [year, month, day] = String(value).split("-").map(Number);
+    return new Date(year, month - 1, day);
   }
 
   function familyOffset(member) {
